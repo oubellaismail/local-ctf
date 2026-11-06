@@ -40,6 +40,12 @@ spec:
       nodeSelector:
         ctf/role: core
       automountServiceAccountToken: false
+      # Without this, every lookup of controller-api.ctfd.svc.cluster.local
+      # first tries the node's DHCP search domain (e.g. "localdomain"), which
+      # the LAN's DNS may never answer: each Start/status call then waited
+      # ~10 s for that timeout. ndots:2 resolves full names directly.
+      dnsConfig:
+        options: [{name: ndots, value: "2"}]
       securityContext:
         runAsNonRoot: true
         runAsUser: 1001
