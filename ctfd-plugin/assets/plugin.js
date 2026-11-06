@@ -186,9 +186,11 @@
   }
 
   function initLogo() {
-    forceDarkMode();
-    injectBackground();
-    injectLogo();
+    if (BRANDING) {
+      forceDarkMode();
+      injectBackground();
+      injectLogo();
+    }
     injectRulesLink();
   }
 

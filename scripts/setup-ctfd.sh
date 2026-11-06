@@ -341,7 +341,7 @@ fi
 # Step 5: Create / update CTFd pages (idempotent)
 # ---------------------------------------------------------------------------
 create_or_update_page() {
-  local route="$1" title="$2" content="$3" auth_required="${4:-false}"
+  local route="$1" title="$2" content="$3" auth_required="${4:-false}" hidden="${5:-false}"
   # Check if the page already exists
   local resp
   resp=$(ctfd_api GET "/api/v1/pages?route=$route")
@@ -366,10 +366,10 @@ print(json.dumps({
     'route': sys.argv[2],
     'content': sys.argv[3],
     'draft': False,
-    'hidden': False,
+    'hidden': sys.argv[5] == 'true',
     'auth_required': sys.argv[4] == 'true'
 }))
-" "$title" "$route" "$content" "$auth_required")
+" "$title" "$route" "$content" "$auth_required" "$hidden")
 
   if [[ -n "$existing_id" ]]; then
     resp=$(ctfd_api PATCH "/api/v1/pages/$existing_id" "$payload")
@@ -400,6 +400,20 @@ if [[ -f "$RULES_HTML_FILE" ]]; then
   create_or_update_page "rules" "Rules" "$RULES_CONTENT" "false"
 else
   echo "  WARNING: rules.html not found at $RULES_HTML_FILE — skipping rules page"
+fi
+
+# Home page. Our setup writes the DB directly instead of using CTFd's /setup
+# wizard, so CTFd's default "index" page is never created and / returns 404.
+# Only created if missing, so admins can edit it freely afterwards.
+if ! ctfd_api GET "/api/v1/pages?route=index" >/dev/null || \
+   ! grep -q '"route": *"index"' "$RESP_TMP"; then
+  INDEX_CONTENT="<div class=\"row\"><div class=\"col-md-8 offset-md-2 text-center py-5\">
+<h1>${CTFD_EVENT_NAME}</h1>
+<p class=\"lead\">Log in with the account you were given, then open <a href=\"/challenges\">Challenges</a>.</p>
+<p>Read the <a href=\"/rules\">rules</a> first. Flags look like <code>${FLAG_PREFIX:-CTF}{...}</code>.</p>
+</div></div>"
+  # hidden = not listed in the navbar (the logo already links to /)
+  create_or_update_page "index" "Home" "$INDEX_CONTENT" "false" "true"
 fi
 
 echo "Creating CTFd pages... OK"
