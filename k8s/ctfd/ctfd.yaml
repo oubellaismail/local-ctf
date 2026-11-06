@@ -70,6 +70,8 @@ spec:
           valueFrom: {secretKeyRef: {name: ctfd-secrets, key: CTF_MASTER_SECRET}}
         - name: FLAG_PREFIX
           value: "${FLAG_PREFIX}"
+        - name: CTF_BRANDING
+          value: "${BRANDING}"
         - name: STATIC_FILES_URL
           value: http://static-files.ctfd.svc.cluster.local
         - name: UPLOAD_FOLDER

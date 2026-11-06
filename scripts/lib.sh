@@ -37,6 +37,7 @@ load_config() {
   CTF_HOSTNAME="${CTF_HOSTNAME:-}"
   EVENT_NAME="${EVENT_NAME:-Club CTF}"
   FLAG_PREFIX="${FLAG_PREFIX:-CTF}"
+  BRANDING="${BRANDING:-false}"
   MAX_ACTIVE_PER_TEAM="${MAX_ACTIVE_PER_TEAM:-4}"
   INSTANCE_LIFETIME_MINUTES="${INSTANCE_LIFETIME_MINUTES:-60}"
   CTFD_REPLICAS="${CTFD_REPLICAS:-2}"
@@ -47,7 +48,7 @@ load_config() {
   CTFD_URL="https://${CTF_HOSTNAME:-$CTF_HOST}"
   export REGISTRY CTF_HOST CTF_HOSTNAME EVENT_NAME FLAG_PREFIX MAX_ACTIVE_PER_TEAM \
     INSTANCE_LIFETIME_MINUTES CTFD_REPLICAS CTFD_WORKERS CTFD_VERSION CTFD_URL \
-    CTFD_ADMIN_NAME CTFD_ADMIN_EMAIL
+    CTFD_ADMIN_NAME CTFD_ADMIN_EMAIL BRANDING
 
   # Our own CA signs the CTFd certificate; trust it for curl/python/httpx.
   if [[ -f "$SECRETS_DIR/ca.crt" ]]; then
@@ -79,7 +80,7 @@ load_admin_token() {
 
 # Render a manifest template: only the listed ${VARS} are substituted so any
 # other "$" in the YAML is left alone.
-RENDER_VARS='${REGISTRY} ${CTF_HOST} ${FLAG_PREFIX} ${MAX_ACTIVE_PER_TEAM} ${INSTANCE_LIFETIME_MINUTES} ${CTFD_REPLICAS} ${CTFD_WORKERS}'
+RENDER_VARS='${REGISTRY} ${CTF_HOST} ${FLAG_PREFIX} ${MAX_ACTIVE_PER_TEAM} ${INSTANCE_LIFETIME_MINUTES} ${CTFD_REPLICAS} ${CTFD_WORKERS} ${BRANDING}'
 render() { envsubst "$RENDER_VARS" < "$1"; }
 apply_tpl() { render "$1" | kubectl apply -f -; }
 

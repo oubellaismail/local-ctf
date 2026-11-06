@@ -1,0 +1,277 @@
+/* Instance controls + multi-flag progress. Always loaded, with or without
+ * the custom theme (style.css). Colors fall back to CTFd's default theme. */
+
+/* ── Instance Manager Panel ───────────────────────────────── */
+.ctf-logo {
+  height: 32px;
+  width: auto;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+/* ── Controller UI — sits between description and flag input ─ */
+.ctf-controller-ui {
+  margin: 16px 0;
+  border-top: 1px solid rgba(0,196,255,0.12);
+  border-bottom: 1px solid rgba(0,196,255,0.12);
+  padding: 14px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Action row — badge + buttons */
+.ctf-action-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Running state action row — pushed to right */
+.ctf-action-row--running {
+  justify-content: flex-end;
+}
+
+/* Running dot + label */
+.ctf-running-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #00c4ff;
+  box-shadow: 0 0 5px #00c4ff;
+  animation: ctf-live-pulse 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.ctf-running-label {
+  font-size: 11px;
+  color: var(--bs-secondary-color);
+  flex: 1;
+  letter-spacing: 0.04em;
+}
+
+/* Start — full weight, primary */
+.ctf-start-btn {
+  border-radius: 0 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  padding: 6px 20px !important;
+}
+.ctf-btn-icon { margin-right: 4px; }
+
+/* Stop — quiet danger outline */
+.ctf-stop-btn {
+  border-radius: 0 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 4px 12px !important;
+  color: rgba(220,80,80,0.8) !important;
+  border: 1px solid rgba(204,17,34,0.35) !important;
+  background: transparent !important;
+  transition: color 0.18s, border-color 0.18s, background 0.18s !important;
+}
+.ctf-stop-btn:hover {
+  color: #e84b4b !important;
+  border-color: rgba(204,17,34,0.7) !important;
+  background: rgba(204,17,34,0.08) !important;
+}
+
+/* Restart — very quiet, gold accent on hover */
+.ctf-restart-btn {
+  border-radius: 0 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 4px 12px !important;
+  color: rgba(160,160,160,0.7) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  background: transparent !important;
+  transition: color 0.18s, border-color 0.18s, background 0.18s !important;
+}
+.ctf-restart-btn:hover {
+  color: #ffc200 !important;
+  border-color: rgba(255,194,0,0.4) !important;
+  background: rgba(255,194,0,0.06) !important;
+}
+
+/* URL hero block — stands out as the key thing to act on */
+.ctf-url-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(0,196,255,0.05);
+  border: 1px solid rgba(0,196,255,0.25);
+  border-left: 3px solid #00c4ff;
+  border-radius: 0;
+}
+
+.ctf-url-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: #00c4ff;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+/* Badges */
+.ctf-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #fff;
+  line-height: 1;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 4px rgba(26,107,58,0.4); }
+  50%       { box-shadow: 0 0 12px rgba(26,107,58,0.7); }
+}
+
+.ctf-badge--running {
+  background: var(--ctf-badge-running-bg, #198754);
+  animation: pulse-glow 2.5s ease-in-out infinite;
+}
+
+.ctf-badge--suspended,
+.ctf-badge--fresh {
+  background: var(--ctf-badge-muted-bg, #6c757d);
+  color: var(--ctf-badge-muted-color, #fff);
+}
+
+.ctf-badge--error  { background: var(--ctf-badge-error-bg, #dc3545); }
+.ctf-badge--download { background: var(--bs-primary); color: #050a1a; font-weight: 800; }
+
+.ctf-badge--starting {
+  background: rgba(255,194,0,0.15);
+  color: #ffc200;
+  border: 1px solid rgba(255,194,0,0.35);
+  animation: ctf-starting-pulse 1.2s ease-in-out infinite;
+}
+@keyframes ctf-starting-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+.ctf-starting-note {
+  font-size: 11px;
+  color: var(--bs-secondary-color);
+  font-style: italic;
+}
+
+.ctf-restart-btn {
+  --bs-btn-color:        rgba(180,180,180,0.8);
+  --bs-btn-border-color: rgba(255,255,255,0.15);
+  --bs-btn-hover-bg:     rgba(255,194,0,0.08);
+  --bs-btn-hover-color:  #ffc200;
+  --bs-btn-hover-border-color: rgba(255,194,0,0.4);
+  font-size: 11px !important;
+  padding: 3px 10px !important;
+}
+
+.ctf-nc-command {
+  font-size: 13px;
+  user-select: all;
+  cursor: text;
+  min-width: 0;
+  overflow-x: auto;
+  word-break: break-all;
+  color: var(--bs-body-color);
+  background: transparent;
+  padding: 0;
+}
+
+.ctf-instance-url {
+  font-size: 13px;
+  font-weight: 600;
+  word-break: break-all;
+  min-width: 0;
+  color: #00c4ff !important;
+  text-decoration: none;
+  letter-spacing: 0.01em;
+}
+.ctf-instance-url:hover {
+  text-decoration: underline;
+  color: #33d0ff !important;
+}
+
+.ctf-retry-link { font-size: 12px; color: var(--bs-secondary-color); }
+
+/* Inline warning */
+.ctf-inline-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 2px;
+  border: 1px solid rgba(var(--bs-danger-rgb),0.3);
+  background: rgba(var(--bs-danger-rgb),0.08);
+  color: var(--bs-body-color);
+  font-size: 13px;
+  line-height: 1.4;
+  animation: ctf-warn-in 0.25s ease-out;
+}
+
+.ctf-warning-icon { flex-shrink: 0; font-size: 15px; line-height: 1.2; }
+
+.ctf-warning-dismiss {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0; border: none; background: none;
+  color: var(--bs-secondary-color);
+  font-size: 14px; cursor: pointer; line-height: 1; opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.ctf-warning-dismiss:hover { opacity: 1; }
+
+@keyframes ctf-warn-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 576px) {
+  .ctf-action-row { flex-wrap: wrap; }
+  .ctf-start-btn { flex: 1 1 100%; }
+  .ctf-url-block { flex-direction: column; align-items: flex-start; }
+  .jumbotron h1 { font-size: 1.4rem; }
+}
+
+/* ── Multi-flag progress ─────────────────────────────────── */
+.ctf-mf-progress { margin-bottom: 0.75rem; padding: 0.5rem 0; }
+
+.ctf-mf-label-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+}
+
+.ctf-mf-pts {
+  font-size: 0.75rem;
+  color: var(--ctf-badge-muted-color, #fff);
+  font-variant-numeric: tabular-nums;
+}
+
+.ctf-mf-bar-track {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,194,0,0.12);
+  overflow: hidden;
+}
+
+.ctf-mf-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #ffc200, #e0e0e0);
+  transition: width 0.4s ease;
+  min-width: 0;
+}
+
+.ctf-mf-bar-fill.ctf-mf-bar-complete { background: var(--bs-success); }
+

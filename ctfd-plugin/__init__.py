@@ -557,13 +557,23 @@ def load(app):
         '&family=JetBrains+Mono:wght@400;500'
         '&display=swap"></noscript>'
     )
-    INJECT_TAGS = "\n".join([
-        GOOGLE_FONTS_PRECONNECT,
-        GOOGLE_FONTS_PRECONNECT2,
-        GOOGLE_FONTS_URL,
-        GOOGLE_FONTS_NOSCRIPT,
-        BRAND_CSS_LINK,
-    ])
+    WIDGETS_CSS_LINK = (
+        '<link rel="stylesheet" href="/plugins/controller-plugin/assets/widgets.css">'
+    )
+    # CTF_BRANDING=true: custom dark theme, fonts, GOAL! overlay.
+    # Otherwise CTFd's default theme, plus only the instance-control styles.
+    BRANDING = os.environ.get("CTF_BRANDING", "false").lower() == "true"
+    if BRANDING:
+        INJECT_TAGS = "\n".join([
+            GOOGLE_FONTS_PRECONNECT,
+            GOOGLE_FONTS_PRECONNECT2,
+            GOOGLE_FONTS_URL,
+            GOOGLE_FONTS_NOSCRIPT,
+            WIDGETS_CSS_LINK,
+            BRAND_CSS_LINK,
+        ])
+    else:
+        INJECT_TAGS = WIDGETS_CSS_LINK
 
     @app.after_request
     def inject_brand_assets(response):
@@ -597,8 +607,8 @@ def load(app):
         except Exception:
             pass
 
-        js = "window.CTF_CONTROLLER = {{ team_id: {}, is_admin: {} }};".format(
-            team_id, is_admin
+        js = "window.CTF_CONTROLLER = {{ team_id: {}, is_admin: {}, branding: {} }};".format(
+            team_id, is_admin, "true" if BRANDING else "false"
         )
         resp = make_response(js)
         resp.headers["Content-Type"] = "application/javascript"

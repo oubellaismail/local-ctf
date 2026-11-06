@@ -2,7 +2,7 @@
  * CTFd Controller Plugin - client-side challenge instance management
  *
  * Config injected by __init__.py (after_request) as window.CTF_CONTROLLER:
- *   { team_id, is_admin }
+ *   { team_id, is_admin, branding }
  *
  * All controller API calls go through the CTFd proxy (/controller-proxy/...)
  * so no cluster-internal URLs or API keys are exposed to the browser.
@@ -19,9 +19,12 @@
   // fixed in place at all times and just toggle their visibility.
 
   var GOAL_CLIP_URL = "/plugins/controller-plugin/assets/goal-clip.mp4";
+  var BRANDING = !!(window.CTF_CONTROLLER && window.CTF_CONTROLLER.branding);
+  var _goalVid = null, _goalOverlay = null;
+  if (BRANDING) {
 
   // Video layer — fixed, always in DOM, invisible until triggered
-  var _goalVid = document.createElement("video");
+  _goalVid = document.createElement("video");
   _goalVid.id = "ctf-goal-vid";
   _goalVid.src = GOAL_CLIP_URL;
   _goalVid.preload = "auto";
@@ -31,7 +34,7 @@
   document.body.appendChild(_goalVid);
 
   // Text/overlay layer — fixed, always in DOM, invisible until triggered
-  var _goalOverlay = document.createElement("div");
+  _goalOverlay = document.createElement("div");
   _goalOverlay.id = "ctf-goal-overlay";
   _goalOverlay.innerHTML =
     '<div class="ctf-goal-inner">' +
@@ -40,12 +43,13 @@
       '<div class="ctf-goal-sub">FLAG CAPTURED</div>' +
     '</div>';
   document.body.appendChild(_goalOverlay);
+  }
 
   var _goalActive = false;
   var _goalDismissTimer = null;
 
   function showGoalOverlay() {
-    if (_goalActive) return;
+    if (!BRANDING || _goalActive) return;
     _goalActive = true;
 
     _goalVid.currentTime = 0;

@@ -75,8 +75,8 @@ make ctfd-setup TEAMS_CSV=data/teams.csv
 | 3.1 | "Setup complete.", `.secrets/ctfd-admin.env` exists | if the token fails with 401/302: `kubectl -n ctfd exec redis-0 -- redis-cli FLUSHALL`, then rerun |
 | 3.2 | **player device:** open `https://<CTF_HOST>`, accept the cert warning, see the branded login page | page loads without styles → Google Fonts are blocked by the network. That's fine, just cosmetic |
 | 3.3 | log in as admin. Admin → Teams lists the 3 teams | |
-| 3.4 | Admin → Config: user mode = teams. The Rules page shows `TEST{...}` | |
-| 3.5 | Admin → Config → Plugins (or `/admin/config`) has `X_CONTROLLER_KEY` set | if empty: `make ctfd-setup` again (it re-applies the key) |
+| 3.4 | Admin → Config → **General**: User Mode = Teams. Open `https://<CTF_HOST>/rules` (also in the top menu): flags shown as `TEST{...}` | edit it under Admin → Pages → rules |
+| 3.5 | Controller key stored (CTFd has no page for it): `kubectl -n ctfd exec mysql-0 -- sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -N ctfd -e "SELECT CHAR_LENGTH(value) FROM config WHERE \`key\`=\"X_CONTROLLER_KEY\""' 2>/dev/null` prints a number (key length, not the key) | empty: `make ctfd-setup` again (it re-applies the key) |
 
 ## Phase 4: Challenges (20 min)
 
