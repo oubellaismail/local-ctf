@@ -4,6 +4,9 @@ import sqlite3
 from flask import Flask, request, redirect, session, render_template_string
 
 app = Flask(__name__)
+# Challenges share CTFd's host (different port), and cookies ignore ports:
+# never use the default name "session" for a challenge cookie.
+app.config["SESSION_COOKIE_NAME"] = "chal_session"
 app.secret_key = os.urandom(24)
 
 # Initialize in-memory database with users table

@@ -2,6 +2,9 @@ import os, base64
 from flask import Flask, Response
 
 app = Flask(__name__)
+# Challenges share CTFd's host (different port), and cookies ignore ports:
+# never use the default name "session" for a challenge cookie.
+app.config["SESSION_COOKIE_NAME"] = "chal_session"
 FLAG = os.environ["FLAG"]  # injected by K8s Secret at runtime
 ENCODED = base64.b64encode(FLAG.encode()).decode()
 

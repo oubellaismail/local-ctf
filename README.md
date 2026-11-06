@@ -84,6 +84,7 @@ New team mid-semester? Add it to the CSV and run `make teams CSV=data/teams.csv 
 ## Writing challenges
 
 - **Service challenges** read their flag from the `FLAG` env var. `challenges/templates/` has working Dockerfiles for web, pwn, misc, crypto, forensics, osint and reversing. Each instance is limited to 128 MB by default (`memory_limit` up to 512Mi) and can make no outbound network connections.
+- **Cookies:** challenges run on the same host as CTFd (only the port differs), and browsers don't separate cookies by port. Never name a challenge cookie `session` or `ctfd_session`; the templates use `chal_session`.
 - **Download challenges:** put files containing `{{FLAG}}` in `challenges/static/<id>/`, or write a `build.sh`.
 - **Remove the three `example-*` manifests** before your first real round. Use them for a dry run first.
 

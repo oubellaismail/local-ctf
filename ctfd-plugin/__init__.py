@@ -536,8 +536,19 @@ def load(app):
     """Load the CTFd plugin."""
     from CTFd.utils.plugins import register_script
 
-    # Keep CTFd cookies host-only. Challenge services are served from
-    # challenge NodePorts and must not receive CTFd session cookies.
+    # Session cookie hardening. Challenges are served from the SAME host as
+    # CTFd (http://CTF_HOST:<nodeport>), and browsers scope cookies by host,
+    # not port. A challenge app that sets a cookie called "session" (Flask's
+    # default) replaced CTFd's and logged the player out. So:
+    #   - a unique name, so challenge cookies never collide with it
+    #   - Secure: never sent to the plain-http challenge ports, and browsers
+    #     refuse to let an http page overwrite a Secure cookie
+    #   - HttpOnly + SameSite=Lax as usual
+    # Set here because CTFd does not read these from environment variables.
+    app.config["SESSION_COOKIE_NAME"] = "ctfd_session"
+    app.config["SESSION_COOKIE_SECURE"] = True
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
     # ── Branding: inject stylesheet + Google Fonts ─────────────────────────
     GOOGLE_FONTS_PRECONNECT = '<link rel="preconnect" href="https://fonts.googleapis.com">'
