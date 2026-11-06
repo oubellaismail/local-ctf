@@ -866,9 +866,34 @@
     // shows a progress bar above).
     updateUI();
     startPolling();
+    startUiGuard();
+  }
+
+  // CTFd (Alpine.js) can re-render the modal body just after "shown.bs.modal",
+  // wiping the controls we inserted. They then only came back on the next
+  // 15 s poll. Watch the modal and redraw as soon as our container is gone.
+  var uiGuard = null, uiGuardTimer = null;
+  function startUiGuard() {
+    stopUiGuard();
+    var modal = document.getElementById("challenge-window");
+    if (!modal || !window.MutationObserver) return;
+    uiGuard = new MutationObserver(function () {
+      if (!currentChallengeId || document.getElementById("ctf-controller-ui")) return;
+      if (uiGuardTimer) clearTimeout(uiGuardTimer);
+      uiGuardTimer = setTimeout(function () {
+        if (currentChallengeId && !document.getElementById("ctf-controller-ui")) updateUI();
+      }, 150);
+    });
+    uiGuard.observe(modal, { childList: true, subtree: true });
+  }
+  function stopUiGuard() {
+    if (uiGuard) uiGuard.disconnect();
+    if (uiGuardTimer) clearTimeout(uiGuardTimer);
+    uiGuard = null; uiGuardTimer = null;
   }
 
   function onModalClose() {
+    stopUiGuard();
     stopPolling();
     stopProgressPolling();
     openingId = null;
