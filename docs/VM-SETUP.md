@@ -64,6 +64,17 @@ free -g          # should show ~9-10 GB
 sudo lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv && sudo resize2fs /dev/ubuntu-vg/ubuntu-lv
 ```
 
+**Swap:** turn it off. Kubernetes memory limits are only predictable
+without swap. If memory runs out, a challenge pod gets OOM-killed instead of
+the whole VM slowing to a crawl.
+
+```bash
+sudo swapoff -a && sudo sed -i '/swap.img/s/^/#/' /etc/fstab && sudo rm -f /swap.img
+```
+
+Ignore the "New release 26.04 available" message. Stay on 24.04, the
+version the platform is tested on.
+
 ## 6. Get the project (private repo)
 
 ```bash
