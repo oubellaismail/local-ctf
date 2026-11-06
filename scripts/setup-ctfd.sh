@@ -88,7 +88,18 @@ ctfd_api() {
     -H "Authorization: Token $CTFD_ADMIN_TOKEN"
     -H "Content-Type: application/json")
   [[ -n "$data" ]] && args+=(-d "$data")
-  curl "${args[@]}" "${CTFD_URL}${endpoint}"
+  # Retry gateway errors: right after a CTFd restart, Traefik can still route
+  # to a pod that is shutting down for a few seconds.
+  local code attempt
+  for attempt in 1 2 3 4 5 6; do
+    code=$(curl "${args[@]}" "${CTFD_URL}${endpoint}") || true
+    code="${code:-000}"
+    case "$code" in
+      502|503|504|000) [[ $attempt -lt 6 ]] && sleep 5 ;;
+      *) break ;;
+    esac
+  done
+  echo "$code"
 }
 
 wait_for_ctfd() {

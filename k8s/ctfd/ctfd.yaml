@@ -86,6 +86,12 @@ spec:
           value: "false"
         ports:
         - containerPort: 8000
+        # Keep serving for a few seconds after Kubernetes starts removing the
+        # pod, so Traefik stops routing to it first. Without this, every
+        # rolling restart (setup, rebuilds, mid-event fixes) produces 502s.
+        lifecycle:
+          preStop:
+            exec: {command: ["sleep", "10"]}
         readinessProbe:
           httpGet: {path: /healthcheck, port: 8000}
           initialDelaySeconds: 10
