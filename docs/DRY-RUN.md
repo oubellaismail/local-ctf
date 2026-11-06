@@ -40,7 +40,7 @@ make install
 | 1.2 | log out, log back in, then `docker ps` works without sudo | `groups` should list `docker` |
 | 1.3 | `kubectl get nodes -L ctf/role` shows 1 node, Ready, role `core` | `export KUBECONFIG=~/.kube/config` |
 | 1.4 | `kubectl -n kube-system get pods` shows traefik Running | ⚠ untested: `kubectl -n kube-system logs deploy/traefik`. If the HelmChartConfig was rejected: `kubectl -n kube-system get helmchartconfig traefik -o yaml` and `kubectl -n kube-system logs job/helm-install-traefik` |
-| 1.5 | `sudo ss -ltnp \| grep -E ':80 \|:443 '` shows ports 80/443 bound | ⚠ untested: Traefik hostPort. If missing, check the `ports.web.hostPort` value in traefik-config.yaml against the k3s Traefik chart version |
+| 1.5 | `curl -s -o /dev/null -w '%{http_code}\n' http://<CTF_HOST>/` prints **404** (Traefik answers, no routes yet). Note: `ss` does **not** show ports 80/443, because hostPort is an iptables rule, not a listening socket | ⚠ untested: Traefik hostPort. `000` = nothing answers: `kubectl -n kube-system get pod -l app.kubernetes.io/name=traefik -o yaml \| grep -B2 -A2 hostPort` should list 80 and 443 |
 | 1.6 | `curl -s -o /dev/null -w '%{http_code}\n' http://localhost:5000/v2/` prints **401** | 401 = registry up with auth. If it's 000: `docker logs ctf-registry` |
 
 ## Phase 2: Platform (20 min)

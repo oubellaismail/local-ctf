@@ -141,6 +141,9 @@ sudo cp /etc/rancher/k3s/k3s.yaml "$HOME/.kube/config"
 sudo chown "$USER:" "$HOME/.kube/config"
 chmod 600 "$HOME/.kube/config"
 export KUBECONFIG="$HOME/.kube/config"
+# So plain `kubectl` works in new shells without sudo
+grep -q "KUBECONFIG=\$HOME/.kube/config" "$HOME/.bashrc" 2>/dev/null || \
+  echo 'export KUBECONFIG=$HOME/.kube/config' >> "$HOME/.bashrc"
 
 for _ in $(seq 1 60); do
   kubectl get nodes 2>/dev/null | grep -q " Ready" && break

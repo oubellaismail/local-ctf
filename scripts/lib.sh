@@ -14,6 +14,12 @@ CONFIG_FILE="${CONFIG_FILE:-$ROOT/config.env}"
 REGISTRY="ctf-registry:5000"
 PUSH_REGISTRY="localhost:5000"
 
+# k3s's kubectl reads root-only /etc/rancher/k3s/k3s.yaml unless KUBECONFIG
+# is set. make install copies it to ~/.kube/config for the normal user.
+if [[ -z "${KUBECONFIG:-}" && -r "$HOME/.kube/config" ]]; then
+  export KUBECONFIG="$HOME/.kube/config"
+fi
+
 info() { printf '\033[1;34m▸\033[0m %s\n' "$*"; }
 ok()   { printf '  \033[32m✔\033[0m %s\n' "$*"; }
 warn() { printf '  \033[33m!\033[0m %s\n' "$*" >&2; }
