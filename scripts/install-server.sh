@@ -35,6 +35,8 @@ sudo apt-get install -y -qq curl openssl gettext-base python3 python3-venv pytho
 if ! command -v docker >/dev/null; then
   sudo apt-get install -y -qq docker.io >/dev/null
 fi
+# BuildKit builder (silences "legacy builder is deprecated"); optional
+sudo apt-get install -y -qq docker-buildx >/dev/null 2>&1 || true
 sudo systemctl enable --now docker >/dev/null
 if ! id -nG "$USER" | grep -qw docker; then
   sudo usermod -aG docker "$USER"
