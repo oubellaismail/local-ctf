@@ -58,7 +58,8 @@ Players open `https://CTF_HOST`. The certificate comes from our own CA, so
 browsers show a warning once. Players who want to avoid it can install
 `.secrets/ca.crt`.
 
-**Before the first real round, do the dry run in [docs/DRY-RUN.md](docs/DRY-RUN.md).**
+**Before the first real round, do the dry run in [docs/DRY-RUN.md](docs/DRY-RUN.md)**
+(in a VM: start with [docs/VM-SETUP.md](docs/VM-SETUP.md)).
 The platform hasn't run on real hardware yet.
 
 ## Every round
@@ -101,6 +102,8 @@ All fields are documented in `challenges/manifests/schema.yaml`.
 | `scripts/` | everything `make` runs |
 | `docs/RUNBOOK.md` | event-day checklist and troubleshooting |
 | `docs/DRY-RUN.md` | first test on real hardware, step by step |
+| `docs/VM-SETUP.md` | running it in a VMware Fusion / Ubuntu Server VM |
+| `docs/DESIGN-DASHBOARD.md` | proposal: admin dashboard + one-click VM install |
 
 ## License
 
