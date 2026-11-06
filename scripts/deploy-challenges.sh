@@ -40,13 +40,29 @@ ok "controller-api reloaded"
 info "4/6 Creating per-team instances (bulk_spawn)"
 cleanup() { kubectl -n ctfd scale deployment/controller-provisioner --replicas=0 >/dev/null 2>&1 || true; }
 trap cleanup EXIT
+# Start from zero so exactly one fresh pod runs, mounting the ConfigMap we
+# just wrote. (scale + rollout restart briefly made two pods, and we could
+# exec into the one being terminated, which has no network.)
+kubectl -n ctfd scale deployment/controller-provisioner --replicas=0 >/dev/null
+kubectl -n ctfd wait --for=delete pod -l app=controller-provisioner --timeout=90s >/dev/null 2>&1 || true
 kubectl -n ctfd scale deployment/controller-provisioner --replicas=1 >/dev/null
-# Restart so a scaled-up pod always mounts the ConfigMap we just wrote
-kubectl -n ctfd rollout restart deployment/controller-provisioner >/dev/null
 kubectl -n ctfd rollout status deployment/controller-provisioner --timeout=180s >/dev/null
 POD=$(kubectl -n ctfd get pods -l app=controller-provisioner \
-  --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
+  -o jsonpath='{.items[0].metadata.name}')
 [[ -n "$POD" ]] || die "provisioner pod not running"
+
+# k3s applies network policies to a new pod a few seconds after it starts.
+# Until then DNS fails ("[Errno -3] Try again"), so wait until it resolves
+# and reaches CTFd.
+for i in $(seq 1 30); do
+  if kubectl -n ctfd exec "$POD" -- python3 -c \
+      "import urllib.request; urllib.request.urlopen('$CTFD_INTERNAL_URL/healthcheck', timeout=3)" \
+      >/dev/null 2>&1; then
+    break
+  fi
+  [[ $i -eq 30 ]] && die "provisioner pod can't reach CTFd after 60 s (DNS or network policy). Check: kubectl -n ctfd exec $POD -- nslookup ctfd-service"
+  sleep 2
+done
 
 LOG_DIR="$ROOT/build/logs"; mkdir -p "$LOG_DIR"
 # run_in_pod <name> <cmd...>: full log to build/logs/<name>.log, show only

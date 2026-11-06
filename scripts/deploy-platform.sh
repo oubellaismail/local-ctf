@@ -43,7 +43,7 @@ ok "ctfd"
 
 info "Applying controller"
 if ! kubectl get configmap challenge-manifests -n ctfd >/dev/null 2>&1; then
-  kubectl create configmap challenge-manifests -n ctfd \
+  kubectl create configmap challenge-manifests -n ctfd --save-config \
     --from-file="$ROOT/challenges/manifests" >/dev/null
 fi
 apply_tpl "$ROOT/k8s/controller/controller.yaml" >/dev/null
