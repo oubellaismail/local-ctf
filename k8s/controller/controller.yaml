@@ -27,6 +27,12 @@ spec:
       labels: {app: controller-api}
     spec:
       serviceAccountName: ctf-controller
+      # Alpine (musl) gives up on a lookup if ANY search-domain query fails,
+      # and the node's DHCP search domain (e.g. "localdomain") is forwarded
+      # to the LAN's DNS, which may time out. ndots:2 makes full names like
+      # ctfd-service.ctfd.svc.cluster.local resolve directly, no search list.
+      dnsConfig:
+        options: [{name: ndots, value: "2"}]
       nodeSelector:
         ctf/role: core
       securityContext:
@@ -92,6 +98,12 @@ spec:
       labels: {app: controller-daemon}
     spec:
       serviceAccountName: ctf-daemon
+      # Alpine (musl) gives up on a lookup if ANY search-domain query fails,
+      # and the node's DHCP search domain (e.g. "localdomain") is forwarded
+      # to the LAN's DNS, which may time out. ndots:2 makes full names like
+      # ctfd-service.ctfd.svc.cluster.local resolve directly, no search list.
+      dnsConfig:
+        options: [{name: ndots, value: "2"}]
       nodeSelector:
         ctf/role: core
       securityContext:
@@ -132,6 +144,12 @@ spec:
       labels: {app: controller-provisioner}
     spec:
       serviceAccountName: ctf-provisioner
+      # Alpine (musl) gives up on a lookup if ANY search-domain query fails,
+      # and the node's DHCP search domain (e.g. "localdomain") is forwarded
+      # to the LAN's DNS, which may time out. ndots:2 makes full names like
+      # ctfd-service.ctfd.svc.cluster.local resolve directly, no search list.
+      dnsConfig:
+        options: [{name: ndots, value: "2"}]
       nodeSelector:
         ctf/role: core
       securityContext:
