@@ -1,0 +1,20 @@
+# ctfd: CTFd, MySQL, Redis, controller, static files.
+# challenges: one Deployment per team × challenge (scaled 0↔1 by the controller).
+#
+# challenges uses "baseline" (not "restricted") because some challenges need
+# run_as_root (see manifest schema). Restricted violations still show as warnings.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ctfd
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: baseline
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: challenges
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted

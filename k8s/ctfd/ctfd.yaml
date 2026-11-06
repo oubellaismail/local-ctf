@@ -1,0 +1,112 @@
+# CTFd with the controller plugin baked into the image (see ctfd/Dockerfile).
+# Plugin change → make build-ctfd && kubectl -n ctfd rollout restart deploy/ctfd
+apiVersion: v1
+kind: Service
+metadata:
+  name: ctfd-service
+  namespace: ctfd
+spec:
+  selector: {app: ctfd}
+  ports:
+  - {port: 80, targetPort: 8000}
+---
+# Uploaded challenge files. Both replicas run on the core laptop, so a
+# ReadWriteOnce local-path volume can be shared.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ctfd-uploads
+  namespace: ctfd
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ctfd
+  namespace: ctfd
+spec:
+  replicas: ${CTFD_REPLICAS}
+  selector:
+    matchLabels: {app: ctfd}
+  template:
+    metadata:
+      labels: {app: ctfd}
+    spec:
+      nodeSelector:
+        ctf/role: core
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+        seccompProfile: {type: RuntimeDefault}
+      initContainers:
+      - name: wait-for-mysql
+        image: busybox:1.36
+        command: ["sh", "-c", "until nc -z mysql 3306; do echo waiting for mysql; sleep 2; done"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities: {drop: [ALL]}
+      containers:
+      - name: ctfd
+        image: ${REGISTRY}/ctfd:latest
+        imagePullPolicy: Always
+        env:
+        - name: MYSQL_PASSWORD
+          valueFrom: {secretKeyRef: {name: ctfd-secrets, key: MYSQL_PASSWORD}}
+        - name: DATABASE_URL
+          value: mysql+pymysql://ctfd:$(MYSQL_PASSWORD)@mysql:3306/ctfd
+        - name: REDIS_URL
+          value: redis://redis:6379
+        - name: SECRET_KEY
+          valueFrom: {secretKeyRef: {name: ctfd-secrets, key: SECRET_KEY}}
+        - name: CTF_MASTER_SECRET
+          valueFrom: {secretKeyRef: {name: ctfd-secrets, key: CTF_MASTER_SECRET}}
+        - name: FLAG_PREFIX
+          value: "${FLAG_PREFIX}"
+        - name: STATIC_FILES_URL
+          value: http://static-files.ctfd.svc.cluster.local
+        - name: UPLOAD_FOLDER
+          value: /var/uploads
+        - name: WORKERS
+          value: "${CTFD_WORKERS}"
+        - name: REVERSE_PROXY
+          value: "true"
+        - name: SESSION_COOKIE_SECURE
+          value: "true"
+        - name: SESSION_COOKIE_HTTPONLY
+          value: "true"
+        - name: SERVER_SENT_EVENTS
+          value: "false"
+        ports:
+        - containerPort: 8000
+        readinessProbe:
+          httpGet: {path: /healthcheck, port: 8000}
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+        livenessProbe:
+          httpGet: {path: /healthcheck, port: 8000}
+          initialDelaySeconds: 60
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 5
+        resources:
+          requests: {cpu: 250m, memory: 512Mi}
+          limits: {cpu: "2", memory: 1536Mi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities: {drop: [ALL]}
+        volumeMounts:
+        - name: uploads
+          mountPath: /var/uploads
+      volumes:
+      - name: uploads
+        persistentVolumeClaim:
+          claimName: ctfd-uploads

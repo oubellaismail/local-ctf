@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: ctfd
+spec:
+  selector: {app: redis}
+  ports:
+  - {port: 6379, targetPort: 6379}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: ctfd
+spec:
+  serviceName: redis
+  replicas: 1
+  selector:
+    matchLabels: {app: redis}
+  template:
+    metadata:
+      labels: {app: redis}
+    spec:
+      nodeSelector:
+        ctf/role: core
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        args: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+        ports:
+        - containerPort: 6379
+        resources:
+          requests: {cpu: 50m, memory: 64Mi}
+          limits: {cpu: 500m, memory: 256Mi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities: {drop: [ALL]}
+        volumeMounts:
+        - name: data
+          mountPath: /data
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ReadWriteOnce]
+      storageClassName: local-path
+      resources:
+        requests:
+          storage: 1Gi

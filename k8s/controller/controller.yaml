@@ -1,0 +1,166 @@
+# Challenge controller:
+#   controller-api          CTFd plugin calls it to start/stop/status instances
+#   controller-daemon       stops instances after INSTANCE_LIFETIME_MINUTES
+#   controller-provisioner  idle (replicas 0); deploy-challenge.sh scales it
+#                           up to run bulk_spawn / import_flags, then back down
+apiVersion: v1
+kind: Service
+metadata:
+  name: controller-api
+  namespace: ctfd
+spec:
+  selector: {app: controller-api}
+  ports:
+  - {name: http, port: 80, targetPort: 5000}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller-api
+  namespace: ctfd
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: controller-api}
+  template:
+    metadata:
+      labels: {app: controller-api}
+    spec:
+      serviceAccountName: ctf-controller
+      nodeSelector:
+        ctf/role: core
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+      - name: controller-api
+        image: ${REGISTRY}/controller:latest
+        imagePullPolicy: Always
+        # 2 workers is plenty for 20 teams. Keep it low: the per-team cap is
+        # checked per request against Kubernetes, not shared memory.
+        command: ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "5000", "--workers", "2"]
+        env:
+        - name: CTF_MASTER_SECRET
+          valueFrom: {secretKeyRef: {name: ctfd-secrets, key: CTF_MASTER_SECRET}}
+        - name: CONTROLLER_KEY
+          valueFrom: {secretKeyRef: {name: controller-key, key: CONTROLLER_KEY}}
+        - name: CHALLENGE_HOST
+          value: "${CTF_HOST}"
+        - name: MAX_ACTIVE_PER_TEAM
+          value: "${MAX_ACTIVE_PER_TEAM}"
+        - name: FLAG_PREFIX
+          value: "${FLAG_PREFIX}"
+        ports:
+        - containerPort: 5000
+        readinessProbe:
+          httpGet: {path: /health, port: 5000}
+          initialDelaySeconds: 3
+          periodSeconds: 5
+        livenessProbe:
+          httpGet: {path: /health, port: 5000}
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        resources:
+          requests: {cpu: 100m, memory: 192Mi}
+          limits: {cpu: "1", memory: 512Mi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities: {drop: [ALL]}
+        volumeMounts:
+        - name: manifests
+          mountPath: /app/challenges/manifests
+          readOnly: true
+      volumes:
+      - name: manifests
+        configMap:
+          name: challenge-manifests
+          optional: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller-daemon
+  namespace: ctfd
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: controller-daemon}
+  template:
+    metadata:
+      labels: {app: controller-daemon}
+    spec:
+      serviceAccountName: ctf-daemon
+      nodeSelector:
+        ctf/role: core
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+      - name: controller-daemon
+        image: ${REGISTRY}/controller:latest
+        imagePullPolicy: Always
+        command: ["python", "daemon.py"]
+        env:
+        - name: CTF_MASTER_SECRET
+          valueFrom: {secretKeyRef: {name: ctfd-secrets, key: CTF_MASTER_SECRET}}
+        - name: LIFETIME_MINUTES
+          value: "${INSTANCE_LIFETIME_MINUTES}"
+        - name: POLL_SECONDS
+          value: "60"
+        resources:
+          requests: {cpu: 20m, memory: 64Mi}
+          limits: {cpu: 200m, memory: 128Mi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities: {drop: [ALL]}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller-provisioner
+  namespace: ctfd
+spec:
+  replicas: 0
+  selector:
+    matchLabels: {app: controller-provisioner}
+  template:
+    metadata:
+      labels: {app: controller-provisioner}
+    spec:
+      serviceAccountName: ctf-provisioner
+      nodeSelector:
+        ctf/role: core
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+      - name: controller-provisioner
+        image: ${REGISTRY}/controller:latest
+        imagePullPolicy: Always
+        command: ["sh", "-c", "sleep infinity"]
+        env:
+        - name: CTF_MASTER_SECRET
+          valueFrom: {secretKeyRef: {name: ctfd-secrets, key: CTF_MASTER_SECRET}}
+        - name: FLAG_PREFIX
+          value: "${FLAG_PREFIX}"
+        resources:
+          requests: {cpu: 100m, memory: 128Mi}
+          limits: {cpu: "1", memory: 512Mi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities: {drop: [ALL]}
+        volumeMounts:
+        - name: manifests
+          mountPath: /app/challenges/manifests
+          readOnly: true
+      volumes:
+      - name: manifests
+        configMap:
+          name: challenge-manifests
+          optional: true

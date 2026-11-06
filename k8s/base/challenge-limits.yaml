@@ -1,0 +1,36 @@
+# Hard ceiling for all challenge pods together, sized for ~20 teams on
+# 16 GB laptops: 20 teams × 4 running instances = 80 pods.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: challenges-quota
+  namespace: challenges
+spec:
+  hard:
+    pods: "100"
+    requests.cpu: "8"
+    requests.memory: "4Gi"
+    limits.cpu: "50"
+    limits.memory: "24Gi"   # limits overcommit; requests are what must fit
+---
+# Defaults for any container without explicit limits.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: challenges-limits
+  namespace: challenges
+spec:
+  limits:
+  - type: Container
+    default:
+      cpu: "0.5"
+      memory: "128Mi"
+    defaultRequest:
+      cpu: "0.05"
+      memory: "32Mi"
+    max:
+      cpu: "1"
+      memory: "512Mi"
+    min:
+      cpu: "0.01"
+      memory: "16Mi"

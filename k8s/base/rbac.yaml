@@ -1,0 +1,103 @@
+# Three service accounts with least privilege in the challenges namespace:
+#   ctf-controller   runtime API: list/scale deployments, read NodePorts
+#   ctf-daemon       lifetime daemon: scale expired deployments to 0
+#   ctf-provisioner  bulk_spawn: create deployments/services/flag secrets
+#                    (pod only runs while deploying challenges)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ctf-controller
+  namespace: ctfd
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ctf-daemon
+  namespace: ctfd
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ctf-provisioner
+  namespace: ctfd
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ctf-controller
+  namespace: challenges
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch", "patch"]
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ctf-daemon
+  namespace: challenges
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch", "update", "patch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ctf-provisioner
+  namespace: challenges
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["services", "secrets"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ctf-controller
+  namespace: challenges
+subjects:
+- kind: ServiceAccount
+  name: ctf-controller
+  namespace: ctfd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ctf-controller
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ctf-daemon
+  namespace: challenges
+subjects:
+- kind: ServiceAccount
+  name: ctf-daemon
+  namespace: ctfd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ctf-daemon
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ctf-provisioner
+  namespace: challenges
+subjects:
+- kind: ServiceAccount
+  name: ctf-provisioner
+  namespace: ctfd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ctf-provisioner

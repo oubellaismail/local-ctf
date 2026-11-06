@@ -1,0 +1,190 @@
+# Network isolation, enforced by k3s's built-in network policy controller.
+#
+# challenges namespace:
+#   - pods accept connections from anywhere (players come in via NodePort)
+#   - pods can make NO outbound connections except DNS, so a shell in one
+#     challenge can't reach other teams' instances, CTFd, MySQL or the LAN
+# ctfd namespace:
+#   - default deny, then only the flows the platform needs
+#
+# Port numbers below are POD ports (Service ports are translated before
+# policies are checked).
+
+# ── challenges ──────────────────────────────────────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress
+  namespace: challenges
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: challenges
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - {protocol: UDP, port: 53}
+    - {protocol: TCP, port: 53}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-players-in
+  namespace: challenges
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+  - {}
+---
+# ── ctfd ────────────────────────────────────────────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: ctfd
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: ctfd
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - {protocol: UDP, port: 53}
+    - {protocol: TCP, port: 53}
+---
+# Traefik (kube-system) and controller pods → CTFd
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ctfd-ingress
+  namespace: ctfd
+spec:
+  podSelector:
+    matchLabels: {app: ctfd}
+  policyTypes: [Ingress]
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    - podSelector:
+        matchExpressions:
+        - {key: app, operator: In, values: [controller-api, controller-provisioner]}
+    ports:
+    - {protocol: TCP, port: 8000}
+---
+# CTFd → MySQL, Redis, controller API, static files
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ctfd-egress
+  namespace: ctfd
+spec:
+  podSelector:
+    matchLabels: {app: ctfd}
+  policyTypes: [Egress]
+  egress:
+  - to: [{podSelector: {matchLabels: {app: mysql}}}]
+    ports: [{protocol: TCP, port: 3306}]
+  - to: [{podSelector: {matchLabels: {app: redis}}}]
+    ports: [{protocol: TCP, port: 6379}]
+  - to: [{podSelector: {matchLabels: {app: controller-api}}}]
+    ports: [{protocol: TCP, port: 5000}]
+  - to: [{podSelector: {matchLabels: {app: static-files}}}]
+    ports: [{protocol: TCP, port: 8080}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mysql-ingress
+  namespace: ctfd
+spec:
+  podSelector:
+    matchLabels: {app: mysql}
+  policyTypes: [Ingress]
+  ingress:
+  - from: [{podSelector: {matchLabels: {app: ctfd}}}]
+    ports: [{protocol: TCP, port: 3306}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-ingress
+  namespace: ctfd
+spec:
+  podSelector:
+    matchLabels: {app: redis}
+  policyTypes: [Ingress]
+  ingress:
+  - from: [{podSelector: {matchLabels: {app: ctfd}}}]
+    ports: [{protocol: TCP, port: 6379}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: controller-api-ingress
+  namespace: ctfd
+spec:
+  podSelector:
+    matchLabels: {app: controller-api}
+  policyTypes: [Ingress]
+  ingress:
+  - from: [{podSelector: {matchLabels: {app: ctfd}}}]
+    ports: [{protocol: TCP, port: 5000}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: static-files-ingress
+  namespace: ctfd
+spec:
+  podSelector:
+    matchLabels: {app: static-files}
+  policyTypes: [Ingress]
+  ingress:
+  - from: [{podSelector: {matchLabels: {app: ctfd}}}]
+    ports: [{protocol: TCP, port: 8080}]
+---
+# Controller pods → Kubernetes API and CTFd API.
+# The API server is reached at 10.43.0.1:443 (Service) which k3s forwards to
+# the node's :6443, so both ports are allowed to any address.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: controller-egress
+  namespace: ctfd
+spec:
+  podSelector:
+    matchExpressions:
+    - {key: app, operator: In, values: [controller-api, controller-daemon, controller-provisioner]}
+  policyTypes: [Egress]
+  egress:
+  - to: [{ipBlock: {cidr: 0.0.0.0/0}}]
+    ports:
+    - {protocol: TCP, port: 443}
+    - {protocol: TCP, port: 6443}
+  - to: [{podSelector: {matchLabels: {app: ctfd}}}]
+    ports: [{protocol: TCP, port: 8000}]

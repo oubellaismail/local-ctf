@@ -1,0 +1,36 @@
+# Copied by install-server.sh to /var/lib/rancher/k3s/server/manifests/,
+# where k3s applies it to its bundled Traefik chart.
+#
+# - Traefik runs only on the core laptop and binds ports 80/443 there directly
+#   (hostPort). Players connect to https://CTF_HOST. hostPort keeps the real
+#   client IP, which CTFd needs for rate limiting and cheating detection.
+# - servicelb is disabled in k3s, so the Service is plain ClusterIP.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    deployment:
+      replicas: 1
+    # hostPort can't be shared: let the old pod stop before the new one starts
+    updateStrategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxUnavailable: 1
+        maxSurge: 0
+    nodeSelector:
+      ctf/role: core
+    service:
+      type: ClusterIP
+    ports:
+      web:
+        hostPort: 80
+      websecure:
+        hostPort: 443
+    providers:
+      kubernetesCRD:
+        enabled: true
+      kubernetesIngress:
+        enabled: true

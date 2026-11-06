@@ -1,0 +1,57 @@
+# Challenge manifest reference (this file is ignored by the tooling).
+# One YAML file per challenge in challenges/manifests/. make challenges
+# validates them all before touching CTFd or the cluster.
+#
+# ── Service challenge (one instance per team, started from CTFd) ──────────
+# id: web-login              # lowercase a-z 0-9 -, max 40 chars, unique.
+#                            #   Part of the flag formula: don't rename mid-round.
+# name: "Login Bypass"       # CTFd title, unique (CTFd entries are matched by name)
+# category: Web              # any text
+# type: http                 # http → player gets http://CTF_HOST:<nodeport>
+#                            # tcp  → player gets nc CTF_HOST <nodeport>
+# image: ctf-registry:5000/challenges/web-login:latest
+#                            #   push with: make push DIR=challenges/src/web-login
+# port: 8080                 # port the container listens on
+# container_port: 22         # optional: if the pod listens on a different port than `port`
+# extra_ports:               # optional: more exposed ports (shown in CTFd)
+#   - {name: rpc, port: 8545}
+# memory_limit: 256Mi        # optional, default 128Mi, max 512Mi
+# run_as_root: true          # optional: container runs as root (avoid if possible)
+# allow_privilege_escalation: true  # optional: for setuid-binary challenges
+# description: "..."         # optional, markdown
+# author: someone            # optional, appended to the description
+# initial: 500               # optional dynamic scoring start   (default 500)
+# minimum: 50                # optional dynamic scoring floor   (default 50)
+# decay: 15                  # optional solves to reach minimum (default 15)
+#
+# The container gets its team's flag in the FLAG env var and must print/serve
+# it when solved. Never hardcode flags in the image: each team's flag differs.
+#
+# ── Static challenge (per-team file download, no container) ──────────────
+# id: welcome
+# name: "Welcome"
+# category: Misc
+# type: static
+# description: "Download the file."
+#
+# Files go in challenges/static/<id>/:
+#   - text files with {{FLAG}} get the team's flag substituted, or
+#   - a build.sh that writes the files to $OUT_DIR using $FLAG / $TEAM_ID
+#     (for binaries, images, pcaps...). See scripts/build-static.py.
+#
+# ── Multi-flag bundle (one container, several flags/challenges) ──────────
+# id: stadium
+# name: "Stadium"
+# category: Web
+# type: http
+# image: ctf-registry:5000/challenges/stadium:latest
+# port: 8080
+# flags:
+#   - {id: stadium-user, name: "Stadium: user", env: FLAG1, initial: 300}
+#   - {id: stadium-root, name: "Stadium: root", env: FLAG2, initial: 500}
+#
+# ── Flags ────────────────────────────────────────────────────────────────
+# FLAG_PREFIX{ HMAC-SHA256(CTF_MASTER_SECRET, "<team_id>:<id>")[:32] }
+# Check one by hand on the core laptop:
+#   set -a; . .secrets/platform.env; . config.env; set +a
+#   python3 controller/flag.py --team 3 --challenge web-login

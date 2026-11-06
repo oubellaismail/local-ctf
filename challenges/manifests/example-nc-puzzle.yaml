@@ -1,0 +1,13 @@
+# Example service challenge (tcp, players use nc).
+#   make push DIR=challenges/templates/misc NAME=example-misc
+id: example-nc-puzzle
+name: "Example: Netcat Puzzle"
+category: Misc
+type: tcp
+image: ctf-registry:5000/challenges/example-misc:latest
+port: 4444
+description: "Connect with nc and answer the puzzle."
+author: club
+initial: 300
+minimum: 50
+decay: 15

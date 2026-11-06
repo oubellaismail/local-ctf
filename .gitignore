@@ -1,0 +1,19 @@
+# Secrets: master secret, DB passwords, admin token, TLS keys, join token
+.secrets/
+config.env
+
+# Team lists contain player passwords
+data/*.csv
+!data/teams-template.csv
+
+# DB dumps contain everyone's accounts
+backups/
+
+# Generated per-team files (contain flags) and logs
+build/
+
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store

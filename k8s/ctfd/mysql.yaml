@@ -1,0 +1,76 @@
+# Single MySQL 8 — no replica/ProxySQL needed for ~20 teams.
+# Data lives on the core laptop's disk (k3s local-path storage).
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: ctfd
+spec:
+  selector: {app: mysql}
+  ports:
+  - {port: 3306, targetPort: 3306}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+  namespace: ctfd
+spec:
+  serviceName: mysql
+  replicas: 1
+  selector:
+    matchLabels: {app: mysql}
+  template:
+    metadata:
+      labels: {app: mysql}
+    spec:
+      nodeSelector:
+        ctf/role: core
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 999
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+      - name: mysql
+        image: mysql:8.4
+        args:
+        - --max-connections=300
+        - --innodb-buffer-pool-size=536870912   # 512 MB
+        - --skip-log-bin
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom: {secretKeyRef: {name: ctfd-secrets, key: MYSQL_ROOT_PASSWORD}}
+        - name: MYSQL_PASSWORD
+          valueFrom: {secretKeyRef: {name: ctfd-secrets, key: MYSQL_PASSWORD}}
+        - name: MYSQL_DATABASE
+          valueFrom: {secretKeyRef: {name: ctfd-secrets, key: MYSQL_DATABASE}}
+        - name: MYSQL_USER
+          value: ctfd
+        ports:
+        - containerPort: 3306
+        readinessProbe:
+          exec:
+            command: ["sh", "-c", "mysqladmin ping -uroot -p\"$MYSQL_ROOT_PASSWORD\" --silent"]
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+        resources:
+          requests: {cpu: 250m, memory: 768Mi}
+          limits: {cpu: "2", memory: 1536Mi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+            add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE]
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ReadWriteOnce]
+      storageClassName: local-path
+      resources:
+        requests:
+          storage: 10Gi

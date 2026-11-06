@@ -1,0 +1,1199 @@
+/* Infodays CTF — Blue Lock Manga Theme
+ * Cinematic colored video background + electric cyan accent + manga panel cards.
+ */
+
+/* ── Dark Mode tokens ────────────────────────────────────── */
+[data-bs-theme="dark"] {
+  --bs-body-bg:           #050a1a;
+  --bs-body-color:        #e8e8e8;
+  --bs-card-bg:           rgba(5, 10, 26, 0.82);
+  --bs-primary:           #00c4ff;
+  --bs-primary-rgb:       0, 196, 255;
+  --bs-secondary-bg:      rgba(8, 14, 35, 0.85);
+  --bs-tertiary-bg:       rgba(6, 11, 28, 0.90);
+  --bs-secondary-color:   #888;
+  --bs-border-color:      rgba(0, 196, 255, 0.18);
+  --bs-danger:            #cc1122;
+  --bs-danger-rgb:        204, 17, 34;
+  --bs-success:           #1a7f4e;
+  --bs-success-rgb:       26, 127, 78;
+  --bs-font-sans-serif:   'Inter', system-ui, -apple-system, sans-serif;
+  --bs-dark:              #050a1a;
+  --bs-dark-rgb:          5, 10, 26;
+  --ctf-badge-running-bg: #1a6b3a;
+  --ctf-badge-muted-bg:   #1c1c20;
+  --ctf-badge-muted-color:#666;
+  --ctf-badge-error-bg:   #861118;
+  --ctf-ui-bg:            rgba(255,255,255,0.03);
+  --ctf-ui-border:        rgba(0,196,255,0.2);
+  --bl-speed-line:        rgba(0,196,255,0.10);
+  --bl-glow:              rgba(0,196,255,0.35);
+  --bl-metal-a:           #ffc200;
+  --bl-metal-b:           #e0e0e0;
+  --bl-metal-gradient:    linear-gradient(135deg, #ffc200 0%, #e0e0e0 100%);
+  --bl-metal-sweep:       linear-gradient(90deg, transparent, #ffc200 35%, #e8e8e8 65%, transparent);
+}
+
+/* ── Hide theme toggle ───────────────────────────────────── */
+.theme-switch { display: none !important; }
+
+/* ── Global typography ───────────────────────────────────── */
+body,
+body *:not(code):not(pre):not(kbd):not(samp):not(.ctf-nc-command):not(.ctf-instance-url):not(i):not([class*="bi-"]):not([class*="fa-"]):not([class*="fa "]):not([class*="fas "]):not([class*="far "]):not([class*="fab "]):not([class*="material-icons"]):not(.btn-close) {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+}
+
+body {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--bs-body-color) !important;
+  background-color: #050a1a !important;
+  min-height: 100vh;
+}
+
+/* ── Static background — football boot frame ─────────────── */
+#ctf-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background: url("/plugins/controller-plugin/assets/bg-3.jpg") center/cover no-repeat;
+  pointer-events: none;
+}
+
+/* Dark overlay so content stays readable */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 10, 26, 0.60);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Subtle noise grain */
+[data-bs-theme="dark"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 182px;
+  opacity: 0.035;
+  pointer-events: none;
+  z-index: 0;
+}
+
+code, pre, kbd, samp,
+.ctf-nc-command,
+.ctf-instance-url {
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Mono', monospace !important;
+}
+
+/* ── Bootstrap Component Overrides ───────────────────────── */
+
+/* Modal */
+.modal-content {
+  background-color: rgba(8, 8, 12, 0.94) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 196, 255, 0.22) !important;
+  border-radius: 2px !important;
+  box-shadow: 0 0 40px rgba(0,196,255,0.08), 0 20px 60px rgba(0,0,0,0.7);
+}
+
+.modal-header,
+.modal-footer {
+  border-color: rgba(0,196,255,0.12) !important;
+}
+
+/* Cards */
+.card {
+  background: var(--bs-card-bg) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(0,196,255,0.15) !important;
+  border-radius: 2px !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  border-color: rgba(0,196,255,0.4) !important;
+  box-shadow: 0 0 20px rgba(0,196,255,0.1);
+}
+
+.card-header,
+.card-footer {
+  background-color: rgba(14,14,18,0.8) !important;
+  border-color: rgba(0,196,255,0.1) !important;
+}
+
+/* Tables */
+.table {
+  --bs-table-bg: transparent;
+  --bs-table-border-color: rgba(0,196,255,0.1);
+  --bs-table-striped-bg: rgba(10,10,14,0.5);
+  --bs-table-hover-bg: rgba(16,16,20,0.7);
+  color: var(--bs-body-color) !important;
+}
+
+.table > :not(caption) > * > * {
+  background-color: transparent !important;
+  border-bottom-color: rgba(0,196,255,0.08) !important;
+  color: var(--bs-body-color) !important;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+  background-color: rgba(10,10,14,0.5) !important;
+}
+
+.table > thead > tr > th {
+  background-color: rgba(14,14,18,0.9) !important;
+  border-bottom-color: rgba(0,196,255,0.15) !important;
+}
+
+/* ── Navbar ──────────────────────────────────────────────── */
+.navbar {
+  background-color: rgba(2, 5, 14, 0.96) !important;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 2px solid #00c4ff !important;
+  border-bottom: 1px solid rgba(0,196,255,0.18) !important;
+  min-height: 64px;
+  padding: 0 !important;
+  position: relative;
+}
+
+/* Subtle diagonal speed-lines texture — Blue Lock manga feel */
+.navbar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    -62deg,
+    transparent 0px,
+    transparent 22px,
+    rgba(0,196,255,0.022) 22px,
+    rgba(0,196,255,0.022) 23px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.navbar .container {
+  min-height: 64px;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+}
+
+/* Brand — separator on right */
+.navbar .navbar-brand {
+  height: 64px;
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 1.4rem 0 0 !important;
+  margin-right: 0.6rem !important;
+  border-right: 1px solid rgba(0,196,255,0.2);
+  color: #fff !important;
+}
+
+/* All nav links — uppercase, spaced */
+.navbar .nav-link {
+  text-transform: uppercase !important;
+  letter-spacing: 0.11em !important;
+  font-size: 0.71rem !important;
+  font-weight: 700 !important;
+  color: rgba(220,220,220,0.88) !important;
+  padding: 0 1.1rem !important;
+  height: 64px;
+  display: inline-flex !important;
+  align-items: center !important;
+  border-bottom: 2px solid transparent;
+  transition: color 0.18s, border-color 0.18s;
+  white-space: nowrap;
+}
+
+.navbar .nav-link:hover {
+  color: #00c4ff !important;
+  border-bottom-color: rgba(0,196,255,0.55);
+}
+
+/* Login / Register — sharp outlined buttons */
+.navbar a.nav-link[href$="/login"],
+.navbar a.nav-link[href$="/register"] {
+  height: 34px !important;
+  padding: 0 1.35rem !important;
+  margin-left: 0.4rem;
+  border: 1px solid rgba(255,255,255,0.6) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.6) !important;
+  border-radius: 0 !important;
+  color: #fff !important;
+  font-size: 0.68rem !important;
+  letter-spacing: 0.14em !important;
+  align-self: center;
+  transition: background 0.18s, border-color 0.18s !important;
+}
+
+.navbar a.nav-link[href$="/login"]:hover,
+.navbar a.nav-link[href$="/register"]:hover {
+  background: rgba(255,255,255,0.08) !important;
+  border-color: #fff !important;
+  color: #fff !important;
+}
+
+/* Hide: language dropdown, notifications, Users listing, Teams listing, theme toggle */
+.navbar li.nav-item:has(.fa-language),
+.navbar li.nav-item:has(a[href$="/users"]),
+.navbar li.nav-item:has(a[href$="/teams"]),
+.navbar li.nav-item:has(a[href*="notifications"]),
+.navbar li.nav-item:has(.theme-switch),
+.theme-switch { display: none !important; }
+
+/* Dropdown */
+.dropdown-menu {
+  background-color: rgba(8,8,12,0.97) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-color: rgba(0,196,255,0.18) !important;
+  border-radius: 2px !important;
+}
+
+.dropdown-item { color: var(--bs-body-color) !important; }
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background-color: rgba(0,196,255,0.08) !important;
+  color: #fff !important;
+}
+
+/* Inputs */
+.form-control,
+.form-select {
+  background-color: rgba(10,10,14,0.9) !important;
+  border-color: rgba(0,196,255,0.2) !important;
+  color: var(--bs-body-color) !important;
+  border-radius: 2px !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: rgba(10,10,14,0.95) !important;
+  border-color: var(--bs-primary) !important;
+  color: var(--bs-body-color) !important;
+  box-shadow: 0 0 0 0.15rem rgba(0,196,255,0.2);
+}
+
+/* Primary button */
+.btn-primary {
+  --bs-btn-bg:           #00c4ff;
+  --bs-btn-color:        #050a1a;
+  --bs-btn-border-color: #00c4ff;
+  --bs-btn-hover-bg:     #00aee6;
+  --bs-btn-hover-color:  #050a1a;
+  --bs-btn-active-bg:    #0099cc;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+/* Outline danger (Stop Instance) */
+.btn-outline-danger {
+  --bs-btn-color:        #e84b4b;
+  --bs-btn-border-color: #cc1122;
+  --bs-btn-hover-bg:     rgba(204,17,34,0.12);
+  --bs-btn-hover-color:  #e84b4b;
+}
+
+/* ── Hero / Jumbotron ─────────────────────────────────────── */
+.jumbotron {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  position: relative;
+  overflow: hidden;
+  padding-bottom: 0.5rem !important;
+}
+
+.jumbotron::before,
+.jumbotron::after {
+  display: none !important;
+}
+
+.jumbotron h1,
+.jumbotron h2 {
+  color: #fff !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 20px rgba(0,196,255,0.6),
+    0 0 60px rgba(0,196,255,0.2),
+    0 2px 8px rgba(0,0,0,0.9);
+}
+
+.jumbotron p {
+  color: rgba(255,255,255,0.7) !important;
+  letter-spacing: 0.02em;
+}
+
+/* ── Page headings (h1/h2 outside jumbotron) ─────────────── */
+h1, h2 {
+  letter-spacing: 0.04em;
+}
+
+/* Section heading — left bar + glow */
+h4, h5 {
+  color: var(--bs-body-color);
+  letter-spacing: 0.06em;
+}
+
+/* ── Challenge Cards ──────────────────────────────────────── */
+
+/* Base card — dark glass panel with left accent bar */
+.challenge-button {
+  background: rgba(4, 9, 22, 0.82) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0,196,255,0.13) !important;
+  border-left: 3px solid rgba(0,196,255,0.25) !important;
+  border-radius: 0 !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease, background 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Top-right corner notch accent */
+.challenge-button::before {
+  content: "";
+  position: absolute;
+  top: 0; right: 0;
+  width: 18px; height: 18px;
+  background: linear-gradient(225deg, rgba(0,196,255,0.35) 40%, transparent 40%);
+  pointer-events: none;
+  z-index: 1;
+  transition: opacity 0.2s;
+}
+
+/* Cyan sweep line slides in from left on hover */
+.challenge-button::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00c4ff 40%, rgba(0,196,255,0.4) 100%);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+  z-index: 2;
+}
+
+.challenge-button:hover::after { transform: scaleX(1); }
+
+.challenge-button:hover {
+  background: rgba(0, 20, 48, 0.92) !important;
+  border-color: rgba(0,196,255,0.55) !important;
+  border-left-color: rgba(0,196,255,0.9) !important;
+  box-shadow:
+    0 0 24px rgba(0,196,255,0.18),
+    0 4px 20px rgba(0,0,0,0.5),
+    inset 0 0 20px rgba(0,196,255,0.04) !important;
+  transform: translateY(-2px);
+}
+
+/* ── Running/Active — steady cyan breath + scan line ─────── */
+.challenge-button.ctf-instance-active {
+  background: rgba(0, 14, 32, 0.95) !important;
+  border: 1px solid rgba(0,196,255,0.6) !important;
+  border-left: 3px solid #00c4ff !important;
+  animation: ctf-breath 2.8s ease-in-out infinite;
+  z-index: 1;
+}
+
+/* Scanning cyan line across the top */
+.challenge-button.ctf-instance-active::after {
+  background: linear-gradient(90deg, transparent, #00c4ff 45%, rgba(0,196,255,0.4) 100%);
+  transform: none;
+  animation: ctf-scan-sweep 2.8s linear infinite;
+}
+
+/* Pulsing live dot — top-right */
+.challenge-button.ctf-instance-active::before {
+  content: "";
+  position: absolute;
+  top: 9px; right: 9px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #00c4ff;
+  box-shadow: 0 0 5px #00c4ff, 0 0 10px rgba(0,196,255,0.5);
+  animation: ctf-live-pulse 1.6s ease-in-out infinite;
+  z-index: 3;
+}
+
+@keyframes ctf-live-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%       { opacity: 0.25; transform: scale(0.55); }
+}
+
+/* Clean breathing glow — works well on static dark background */
+@keyframes ctf-breath {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(0,196,255,0.35),
+      0 0 12px rgba(0,196,255,0.22),
+      0 0 28px rgba(0,196,255,0.08);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(0,196,255,0.7),
+      0 0 22px rgba(0,196,255,0.45),
+      0 0 50px rgba(0,196,255,0.15);
+  }
+}
+
+@keyframes ctf-scan-sweep {
+  0%   { transform: translateX(-100%); opacity: 0; }
+  8%   { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { transform: translateX(200%); opacity: 0; }
+}
+
+.challenge-button.ctf-instance-stopped {
+  border-left-color: rgba(255,255,255,0.08) !important;
+}
+
+/* ── Solved — gold achievement ───────────────────────────── */
+.challenge-button.challenge-solved {
+  opacity: 0.68;
+  border-color: rgba(255,194,0,0.2) !important;
+  border-left-color: rgba(255,194,0,0.65) !important;
+  background: rgba(10, 8, 2, 0.85) !important;
+}
+
+/* Gold corner triangle — top-right */
+.challenge-button.challenge-solved::before {
+  content: "";
+  position: absolute;
+  top: 0; right: 0;
+  width: 20px; height: 20px;
+  background: linear-gradient(225deg, rgba(255,194,0,0.55) 42%, transparent 42%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Gold shimmer line at top */
+.challenge-button.challenge-solved::after {
+  background: linear-gradient(90deg, transparent, rgba(255,194,0,0.5) 45%, transparent 100%);
+  transform: scaleX(1);
+  opacity: 1;
+  transition: none;
+  animation: none;
+}
+
+.challenge-button.challenge-solved:hover {
+  opacity: 0.85;
+  border-color: rgba(255,194,0,0.4) !important;
+  border-left-color: rgba(255,194,0,0.9) !important;
+  box-shadow: 0 0 18px rgba(255,194,0,0.1), 0 4px 16px rgba(0,0,0,0.5) !important;
+  transform: translateY(-1px);
+}
+
+/* ── Category headers ─────────────────────────────────────── */
+.category-header {
+  position: relative;
+  margin-bottom: 1.2rem !important;
+}
+
+.category-header h3 {
+  font-weight: 900 !important;
+  font-size: 0.72rem !important;
+  letter-spacing: 0.42em !important;
+  text-transform: uppercase !important;
+  /* Metallic gradient text */
+  background: linear-gradient(90deg, #00c4ff 0%, #7ee8ff 60%, rgba(0,196,255,0.5) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0 !important;
+  padding: 0.35rem 0.6rem 0.35rem 0.75rem;
+  border-left: 3px solid #00c4ff;
+  position: relative;
+}
+
+/* Extending line after the label */
+.category-header::after {
+  content: "";
+  display: block;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(0,196,255,0.4) 0%, rgba(0,196,255,0.08) 40%, transparent 100%);
+  margin-top: 0.55rem;
+}
+
+/* ── Page containers — transparent ───────────────────────── */
+.container,
+.container-fluid,
+main,
+section,
+.page-content {
+  background-color: transparent !important;
+}
+
+/* ── Alerts ──────────────────────────────────────────────── */
+.alert {
+  background-color: rgba(10,10,14,0.92) !important;
+  backdrop-filter: blur(8px);
+  border-color: rgba(0,196,255,0.2) !important;
+  color: var(--bs-body-color) !important;
+  border-radius: 0 !important;
+}
+.alert-success {
+  border-color: rgba(0,200,100,0.45) !important;
+  background-color: rgba(0,30,16,0.92) !important;
+  color: #7fffb8 !important;
+}
+.alert-danger {
+  border-color: rgba(204,17,34,0.45) !important;
+  background-color: rgba(30,4,8,0.92) !important;
+  color: #ff7b8a !important;
+}
+.alert-warning {
+  border-color: rgba(255,194,0,0.4) !important;
+  background-color: rgba(28,20,0,0.92) !important;
+  color: #ffd966 !important;
+}
+.alert-info {
+  border-color: rgba(0,196,255,0.35) !important;
+  background-color: rgba(0,20,35,0.92) !important;
+  color: #7ee8ff !important;
+}
+
+/* Pagination */
+.page-link {
+  background-color: rgba(8,8,12,0.85) !important;
+  border-color: rgba(0,196,255,0.15) !important;
+  color: var(--bs-body-color) !important;
+  border-radius: 0 !important;
+}
+
+.page-link:hover {
+  background-color: rgba(0,196,255,0.08) !important;
+  border-color: var(--bs-primary) !important;
+  color: var(--bs-primary) !important;
+}
+
+.page-item.active .page-link {
+  background-color: var(--bs-primary) !important;
+  border-color: var(--bs-primary) !important;
+  color: #050a1a !important;
+  font-weight: 700;
+}
+
+/* Footer */
+footer, .footer {
+  background-color: rgba(0,0,0,0.85) !important;
+  backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(0,196,255,0.12);
+  color: var(--bs-secondary-color) !important;
+}
+
+/* ── Instance Manager Panel ───────────────────────────────── */
+.ctf-logo {
+  height: 32px;
+  width: auto;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+/* ── Controller UI — sits between description and flag input ─ */
+.ctf-controller-ui {
+  margin: 16px 0;
+  border-top: 1px solid rgba(0,196,255,0.12);
+  border-bottom: 1px solid rgba(0,196,255,0.12);
+  padding: 14px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Action row — badge + buttons */
+.ctf-action-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Running state action row — pushed to right */
+.ctf-action-row--running {
+  justify-content: flex-end;
+}
+
+/* Running dot + label */
+.ctf-running-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #00c4ff;
+  box-shadow: 0 0 5px #00c4ff;
+  animation: ctf-live-pulse 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.ctf-running-label {
+  font-size: 11px;
+  color: var(--bs-secondary-color);
+  flex: 1;
+  letter-spacing: 0.04em;
+}
+
+/* Start — full weight, primary */
+.ctf-start-btn {
+  border-radius: 0 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  padding: 6px 20px !important;
+}
+.ctf-btn-icon { margin-right: 4px; }
+
+/* Stop — quiet danger outline */
+.ctf-stop-btn {
+  border-radius: 0 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 4px 12px !important;
+  color: rgba(220,80,80,0.8) !important;
+  border: 1px solid rgba(204,17,34,0.35) !important;
+  background: transparent !important;
+  transition: color 0.18s, border-color 0.18s, background 0.18s !important;
+}
+.ctf-stop-btn:hover {
+  color: #e84b4b !important;
+  border-color: rgba(204,17,34,0.7) !important;
+  background: rgba(204,17,34,0.08) !important;
+}
+
+/* Restart — very quiet, gold accent on hover */
+.ctf-restart-btn {
+  border-radius: 0 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 4px 12px !important;
+  color: rgba(160,160,160,0.7) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  background: transparent !important;
+  transition: color 0.18s, border-color 0.18s, background 0.18s !important;
+}
+.ctf-restart-btn:hover {
+  color: #ffc200 !important;
+  border-color: rgba(255,194,0,0.4) !important;
+  background: rgba(255,194,0,0.06) !important;
+}
+
+/* URL hero block — stands out as the key thing to act on */
+.ctf-url-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(0,196,255,0.05);
+  border: 1px solid rgba(0,196,255,0.25);
+  border-left: 3px solid #00c4ff;
+  border-radius: 0;
+}
+
+.ctf-url-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: #00c4ff;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+/* Badges */
+.ctf-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #fff;
+  line-height: 1;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 4px rgba(26,107,58,0.4); }
+  50%       { box-shadow: 0 0 12px rgba(26,107,58,0.7); }
+}
+
+.ctf-badge--running {
+  background: var(--ctf-badge-running-bg);
+  animation: pulse-glow 2.5s ease-in-out infinite;
+}
+
+.ctf-badge--suspended,
+.ctf-badge--fresh {
+  background: var(--ctf-badge-muted-bg);
+  color: var(--ctf-badge-muted-color);
+}
+
+.ctf-badge--error  { background: var(--ctf-badge-error-bg); }
+.ctf-badge--download { background: var(--bs-primary); color: #050a1a; font-weight: 800; }
+
+.ctf-badge--starting {
+  background: rgba(255,194,0,0.15);
+  color: #ffc200;
+  border: 1px solid rgba(255,194,0,0.35);
+  animation: ctf-starting-pulse 1.2s ease-in-out infinite;
+}
+@keyframes ctf-starting-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+.ctf-starting-note {
+  font-size: 11px;
+  color: var(--bs-secondary-color);
+  font-style: italic;
+}
+
+.ctf-restart-btn {
+  --bs-btn-color:        rgba(180,180,180,0.8);
+  --bs-btn-border-color: rgba(255,255,255,0.15);
+  --bs-btn-hover-bg:     rgba(255,194,0,0.08);
+  --bs-btn-hover-color:  #ffc200;
+  --bs-btn-hover-border-color: rgba(255,194,0,0.4);
+  font-size: 11px !important;
+  padding: 3px 10px !important;
+}
+
+.ctf-nc-command {
+  font-size: 13px;
+  user-select: all;
+  cursor: text;
+  min-width: 0;
+  overflow-x: auto;
+  word-break: break-all;
+  color: var(--bs-body-color);
+  background: transparent;
+  padding: 0;
+}
+
+.ctf-instance-url {
+  font-size: 13px;
+  font-weight: 600;
+  word-break: break-all;
+  min-width: 0;
+  color: #00c4ff !important;
+  text-decoration: none;
+  letter-spacing: 0.01em;
+}
+.ctf-instance-url:hover {
+  text-decoration: underline;
+  color: #33d0ff !important;
+}
+
+.ctf-retry-link { font-size: 12px; color: var(--bs-secondary-color); }
+
+/* Inline warning */
+.ctf-inline-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 2px;
+  border: 1px solid rgba(var(--bs-danger-rgb),0.3);
+  background: rgba(var(--bs-danger-rgb),0.08);
+  color: var(--bs-body-color);
+  font-size: 13px;
+  line-height: 1.4;
+  animation: ctf-warn-in 0.25s ease-out;
+}
+
+.ctf-warning-icon { flex-shrink: 0; font-size: 15px; line-height: 1.2; }
+
+.ctf-warning-dismiss {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0; border: none; background: none;
+  color: var(--bs-secondary-color);
+  font-size: 14px; cursor: pointer; line-height: 1; opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.ctf-warning-dismiss:hover { opacity: 1; }
+
+@keyframes ctf-warn-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 576px) {
+  .ctf-action-row { flex-wrap: wrap; }
+  .ctf-start-btn { flex: 1 1 100%; }
+  .ctf-url-block { flex-direction: column; align-items: flex-start; }
+  .jumbotron h1 { font-size: 1.4rem; }
+}
+
+/* ── Multi-flag progress ─────────────────────────────────── */
+.ctf-mf-progress { margin-bottom: 0.75rem; padding: 0.5rem 0; }
+
+.ctf-mf-label-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+}
+
+.ctf-mf-pts {
+  font-size: 0.75rem;
+  color: var(--ctf-badge-muted-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.ctf-mf-bar-track {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,194,0,0.12);
+  overflow: hidden;
+}
+
+.ctf-mf-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #ffc200, #e0e0e0);
+  transition: width 0.4s ease;
+  min-width: 0;
+}
+
+.ctf-mf-bar-fill.ctf-mf-bar-complete { background: var(--bs-success); }
+
+/* ── GOAL! Fullscreen Overlay ────────────────────────────── */
+/* Video layer — always in DOM, position:fixed, only visible when active */
+#ctf-goal-vid {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 9998;
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity;
+  transform: translateZ(0);
+  transition: none;
+}
+
+/* Overlay text layer — always in DOM, hidden by default */
+#ctf-goal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0,0,0,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity;
+  transform: translateZ(0);
+}
+
+/* Visible state — JS adds this class to both #ctf-goal-vid and #ctf-goal-overlay */
+#ctf-goal-vid.ctf-goal-visible {
+  opacity: 1;
+  pointer-events: none; /* video never needs pointer events */
+}
+
+#ctf-goal-overlay.ctf-goal-visible {
+  opacity: 1;
+  pointer-events: auto;
+  animation: ctf-goal-in 0.2s ease-out;
+}
+
+#ctf-goal-overlay.ctf-goal-fade {
+  animation: ctf-goal-out 0.5s ease-in forwards;
+}
+
+.ctf-goal-inner {
+  text-align: center;
+  position: relative;
+  padding: 3rem;
+  z-index: 1;
+}
+
+.ctf-goal-lines {
+  position: absolute;
+  inset: -300px;
+  background: repeating-conic-gradient(
+    from 0deg at 50% 50%,
+    rgba(255,194,0,0.12) 0deg 2deg,
+    transparent 2deg 10deg
+  );
+  animation: ctf-spin-lines 1.5s ease-out forwards;
+  pointer-events: none;
+}
+
+.ctf-goal-text {
+  position: relative;
+  font-size: clamp(3rem, 13vw, 9rem);
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  /* Metallic gold-to-silver gradient text */
+  background: linear-gradient(135deg, #ffc200 0%, #fff 45%, #e0e0e0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 18px rgba(255,194,0,0.7)) drop-shadow(0 0 45px rgba(255,194,0,0.3));
+  animation: ctf-goal-text-in 0.3s 0.1s ease-out both;
+}
+
+.ctf-goal-sub {
+  position: relative;
+  font-size: clamp(0.7rem, 2.5vw, 1rem);
+  font-weight: 800;
+  letter-spacing: 0.45em;
+  /* Metallic gradient text */
+  background: linear-gradient(135deg, #ffc200, #e0e0e0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-top: 1rem;
+  border-top: 2px solid #ffc200;
+  border-bottom: 2px solid #e0e0e0;
+  padding: 0.4rem 2rem;
+  display: inline-block;
+  animation: ctf-goal-text-in 0.3s 0.2s ease-out both;
+}
+
+@keyframes ctf-goal-in  { from { opacity:0; } to { opacity:1; } }
+@keyframes ctf-goal-out { to { opacity:0; transform:scale(1.03); } }
+@keyframes ctf-goal-text-in {
+  from { opacity:0; transform:scale(0.8) translateY(12px); }
+  to   { opacity:1; transform:scale(1) translateY(0); }
+}
+@keyframes ctf-spin-lines {
+  from { transform:rotate(0deg); opacity:0.7; }
+  to   { transform:rotate(12deg); opacity:0.2; }
+}
+
+/* ── Scoreboard — top 3 metallic rows ───────────────────── */
+.table tbody tr:nth-child(1) td {
+  background: linear-gradient(90deg, rgba(255,194,0,0.08), transparent) !important;
+  border-left: 3px solid #ffc200;
+}
+.table tbody tr:nth-child(2) td {
+  background: linear-gradient(90deg, rgba(200,200,200,0.07), transparent) !important;
+  border-left: 3px solid #c0c0c0;
+}
+.table tbody tr:nth-child(3) td {
+  background: linear-gradient(90deg, rgba(180,120,60,0.07), transparent) !important;
+  border-left: 3px solid #b47840;
+}
+
+/* ── Multi-flag progress bar — metallic fill ─────────────── */
+.ctf-mf-bar-track {
+  background: rgba(255,194,0,0.12);
+}
+
+.ctf-mf-bar-fill {
+  background: linear-gradient(90deg, #ffc200, #e0e0e0);
+}
+
+/* ── Bootstrap Badges ────────────────────────────────────── */
+.badge {
+  border-radius: 0 !important;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-size: 0.68rem;
+}
+.badge.bg-primary, .badge.text-bg-primary {
+  background-color: rgba(0,196,255,0.18) !important;
+  color: #00c4ff !important;
+  border: 1px solid rgba(0,196,255,0.35);
+}
+.badge.bg-secondary, .badge.text-bg-secondary {
+  background-color: rgba(255,255,255,0.07) !important;
+  color: rgba(220,220,220,0.8) !important;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.badge.bg-success, .badge.text-bg-success {
+  background-color: rgba(0,180,80,0.18) !important;
+  color: #5dffa8 !important;
+  border: 1px solid rgba(0,180,80,0.35);
+}
+.badge.bg-danger, .badge.text-bg-danger {
+  background-color: rgba(204,17,34,0.18) !important;
+  color: #ff6b78 !important;
+  border: 1px solid rgba(204,17,34,0.35);
+}
+.badge.text-bg-light, .badge.bg-light {
+  background-color: rgba(255,255,255,0.08) !important;
+  color: rgba(220,220,220,0.9) !important;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+/* Bracket name badge in scoreboard */
+.badge.rounded-pill {
+  border-radius: 999px !important;
+}
+
+/* ── Nav Tabs (challenge modal) ──────────────────────────── */
+.nav-tabs {
+  border-bottom: 1px solid rgba(0,196,255,0.18) !important;
+}
+.nav-tabs .nav-link {
+  color: rgba(180,180,180,0.8) !important;
+  border: 1px solid transparent !important;
+  border-radius: 0 !important;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: color 0.18s, border-color 0.18s;
+  background: transparent !important;
+  padding: 0.5rem 1rem;
+}
+.nav-tabs .nav-link:hover {
+  color: #00c4ff !important;
+  border-bottom-color: rgba(0,196,255,0.4) !important;
+}
+.nav-tabs .nav-link.active {
+  color: #00c4ff !important;
+  background: transparent !important;
+  border-color: transparent transparent #00c4ff transparent !important;
+}
+
+/* ── Nav Pills (scoreboard brackets) ────────────────────── */
+.nav-pills .nav-link {
+  border-radius: 0 !important;
+  color: rgba(200,200,200,0.75) !important;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(0,196,255,0.12);
+  transition: background 0.18s, color 0.18s, border-color 0.18s;
+}
+.nav-pills .nav-link:hover {
+  background: rgba(0,196,255,0.08) !important;
+  color: #00c4ff !important;
+}
+.nav-pills .nav-link.active {
+  background: rgba(0,196,255,0.15) !important;
+  color: #00c4ff !important;
+  border-color: rgba(0,196,255,0.45) !important;
+}
+
+/* ── Toast notifications ─────────────────────────────────── */
+.toast {
+  background-color: rgba(8,10,22,0.97) !important;
+  border: 1px solid rgba(0,196,255,0.25) !important;
+  border-radius: 0 !important;
+  backdrop-filter: blur(16px);
+  color: var(--bs-body-color) !important;
+}
+.toast-header {
+  background-color: rgba(0,196,255,0.08) !important;
+  color: var(--bs-body-color) !important;
+  border-bottom: 1px solid rgba(0,196,255,0.15) !important;
+}
+.toast-body { color: var(--bs-body-color) !important; }
+
+/* ── btn-secondary ───────────────────────────────────────── */
+.btn-secondary {
+  --bs-btn-bg:           rgba(255,255,255,0.07);
+  --bs-btn-color:        rgba(220,220,220,0.9);
+  --bs-btn-border-color: rgba(255,255,255,0.15);
+  --bs-btn-hover-bg:     rgba(255,255,255,0.12);
+  --bs-btn-hover-color:  #fff;
+  --bs-btn-active-bg:    rgba(255,255,255,0.16);
+  border-radius: 0 !important;
+}
+
+/* ── btn-close (modal X) ─────────────────────────────────── */
+.btn-close {
+  filter: invert(1) grayscale(1) !important;
+  opacity: 0.55 !important;
+}
+.btn-close:hover { opacity: 1 !important; }
+
+/* ── HR dividers ─────────────────────────────────────────── */
+hr {
+  border-color: rgba(0,196,255,0.15) !important;
+  opacity: 1 !important;
+}
+
+/* ── Score graph (Chart.js canvas) ──────────────────────── */
+#score-graph canvas,
+[id*="chart"] canvas,
+[id*="graph"] canvas {
+  filter: brightness(0.92);
+}
+#score-graph, .score-graph {
+  background: transparent !important;
+}
+
+/* ── Profile / Team page ─────────────────────────────────── */
+.jumbotron h2 a .badge {
+  font-size: 0.9rem;
+  padding: 0.35em 0.8em;
+}
+
+/* ── List groups ─────────────────────────────────────────── */
+.list-group-item {
+  background-color: rgba(6,10,22,0.88) !important;
+  border-color: rgba(0,196,255,0.12) !important;
+  color: var(--bs-body-color) !important;
+}
+.list-group-item:hover,
+.list-group-item:focus {
+  background-color: rgba(0,196,255,0.06) !important;
+  color: #fff !important;
+}
+.list-group-item.active {
+  background-color: rgba(0,196,255,0.15) !important;
+  border-color: rgba(0,196,255,0.4) !important;
+  color: #00c4ff !important;
+}
+
+/* ── Progress bars ───────────────────────────────────────── */
+.progress {
+  background-color: rgba(255,255,255,0.06) !important;
+  border-radius: 0 !important;
+  height: 6px;
+}
+.progress-bar {
+  background: linear-gradient(90deg, #00c4ff, rgba(0,196,255,0.6)) !important;
+}
+
+/* ── Form labels / helpers ───────────────────────────────── */
+.form-label {
+  color: rgba(200,200,200,0.85) !important;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.form-text, .text-muted {
+  color: rgba(140,140,160,0.85) !important;
+}
+.text-danger { color: #ff5566 !important; }
+
+/* ── Error pages ─────────────────────────────────────────── */
+.error-page h1 {
+  font-size: clamp(4rem, 15vw, 10rem);
+  font-weight: 900;
+  background: linear-gradient(135deg, #00c4ff, #ffc200);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

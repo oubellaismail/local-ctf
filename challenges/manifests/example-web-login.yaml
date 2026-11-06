@@ -1,0 +1,14 @@
+# Example service challenge (http). Delete the example-* files before a real round.
+# Image built from challenges/templates/web:
+#   make push DIR=challenges/templates/web NAME=example-web
+id: example-web-login
+name: "Example: Login Bypass"
+category: Web
+type: http
+image: ctf-registry:5000/challenges/example-web:latest
+port: 8080
+description: "Classic login form. Get in as admin."
+author: club
+initial: 500
+minimum: 100
+decay: 15

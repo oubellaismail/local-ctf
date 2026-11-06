@@ -1,0 +1,45 @@
+# Serves per-team zips for "static" challenges: /{challenge_id}/{team_id}.zip
+# Only reachable from CTFd; the plugin's /download/<id> endpoint checks the
+# player's team and proxies the right zip. Built by: make static
+apiVersion: v1
+kind: Service
+metadata:
+  name: static-files
+  namespace: ctfd
+spec:
+  selector: {app: static-files}
+  ports:
+  - {port: 80, targetPort: 8080}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: static-files
+  namespace: ctfd
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: static-files}
+  template:
+    metadata:
+      labels: {app: static-files}
+    spec:
+      nodeSelector:
+        ctf/role: core
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+      - name: nginx
+        image: ${REGISTRY}/static-files:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        resources:
+          requests: {cpu: 20m, memory: 32Mi}
+          limits: {cpu: 200m, memory: 128Mi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities: {drop: [ALL]}

@@ -1,0 +1,10 @@
+# Example static challenge: per-team zip built from challenges/static/example-welcome/
+id: example-welcome
+name: "Example: Welcome"
+category: Misc
+type: static
+description: "Download the file. The flag is inside."
+author: club
+initial: 100
+minimum: 50
+decay: 15
