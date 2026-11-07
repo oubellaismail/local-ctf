@@ -3,10 +3,14 @@
 The page runs inside CTFd's admin panel. Its API calls go to
 /admin/platform/api/..., which this module forwards to controller-admin
 (the cluster-side service that pushes images and creates team instances)
-with the shared admin key. Only CTFd admins get through (@admins_only), and
-CTFd's own CSRF check applies to every non-GET request.
+with the shared admin key. Only CTFd admins get through (@admins_only).
+
+CSRF: CTFd's built-in check only accepts the CSRF-Token header for JSON
+requests, so every API call from the page is JSON, except uploads (raw file
+body), which skip CTFd's check and verify the same header here instead.
 """
 
+import hmac
 import os
 import re
 
@@ -16,10 +20,24 @@ from flask import Blueprint, Response, jsonify, render_template_string, request,
 ADMIN_URL = os.environ.get("CONTROLLER_ADMIN_URL", "http://controller-admin.ctfd.svc.cluster.local:5001")
 ADMIN_KEY = os.environ.get("CONTROLLER_ADMIN_KEY", "")
 
-# Only these controller-admin paths can be reached through the proxy
+# Only these controller-admin paths can be reached through the JSON proxy
 ALLOWED = re.compile(
-    r"^(challenges(/[a-z0-9-]{1,40}(/(upload|deploy|visibility))?)?|deploy-all|jobs(/[a-f0-9]{1,32})?)$"
+    r"^(challenges(/[a-z0-9-]{1,40}(/(deploy|visibility))?)?|deploy-all|jobs(/[a-f0-9]{1,32})?)$"
 )
+CHALLENGE_ID = re.compile(r"^[a-z0-9-]{1,40}$")
+
+
+def _forward(method, path, data, content_type, timeout):
+    url = f"{ADMIN_URL}/{path}"
+    if request.query_string:
+        url += "?" + request.query_string.decode()
+    headers = {"X-Admin-Key": ADMIN_KEY, "Content-Type": content_type}
+    try:
+        r = requests.request(method, url, data=data, headers=headers, timeout=timeout)
+    except requests.RequestException as e:
+        return jsonify({"detail": f"controller-admin unreachable: {e.__class__.__name__}"}), 502
+    return Response(r.content, status=r.status_code,
+                    content_type=r.headers.get("Content-Type", "application/json"))
 
 
 def register_platform_admin(app):
@@ -34,32 +52,36 @@ def register_platform_admin(app):
         return render_template_string(PAGE, nonce=session.get("nonce", ""),
                                       configured=bool(ADMIN_KEY))
 
+    not_configured = ({"detail": "CONTROLLER_ADMIN_KEY is not set in CTFd (make secrets && make deploy)"}, 503)
+
     @bp.route("/admin/platform/api/<path:sub>", methods=["GET", "POST", "PUT", "DELETE"])
     @admins_only
     def platform_api(sub):
+        # JSON only (CTFd has already checked the CSRF-Token header)
         if not ALLOWED.match(sub):
             return jsonify({"detail": "not allowed"}), 404
         if not ADMIN_KEY:
-            return jsonify({"detail": "CONTROLLER_ADMIN_KEY is not set in CTFd (make secrets && make deploy)"}), 503
-        url = f"{ADMIN_URL}/{sub}"
-        if request.query_string:
-            url += "?" + request.query_string.decode()
-        headers = {"X-Admin-Key": ADMIN_KEY}
-        if sub.endswith("/upload"):
-            # Stream the raw body (image tar / zip) through without loading it
-            headers["Content-Type"] = "application/octet-stream"
-            data = request.stream
-            timeout = (5, 1800)
-        else:
-            headers["Content-Type"] = "application/json"
-            data = request.get_data() or None
-            timeout = (5, 60)
-        try:
-            r = requests.request(request.method, url, data=data, headers=headers, timeout=timeout)
-        except requests.RequestException as e:
-            return jsonify({"detail": f"controller-admin unreachable: {e.__class__.__name__}"}), 502
-        return Response(r.content, status=r.status_code,
-                        content_type=r.headers.get("Content-Type", "application/json"))
+            return jsonify(not_configured[0]), not_configured[1]
+        data = request.get_data() if request.method != "GET" else None
+        return _forward(request.method, sub, data or None, "application/json", (5, 60))
+
+    def platform_upload(cid):
+        # Raw file body: CTFd's CSRF check would want a form field, so it's
+        # skipped for this view (_bypass_csrf below) and done here.
+        if not hmac.compare_digest(request.headers.get("CSRF-Token", ""), session.get("nonce", "") or "-"):
+            return jsonify({"detail": "CSRF check failed: reload the page"}), 403
+        if not CHALLENGE_ID.match(cid):
+            return jsonify({"detail": "invalid challenge id"}), 400
+        if not ADMIN_KEY:
+            return jsonify(not_configured[0]), not_configured[1]
+        # Stream the body (image tar / zip) through without loading it
+        return _forward("POST", f"challenges/{cid}/upload", request.stream,
+                        "application/octet-stream", (5, 1800))
+
+    platform_upload = admins_only(platform_upload)
+    platform_upload._bypass_csrf = True  # CTFd's csrf() skips views with this attribute
+    bp.add_url_rule("/admin/platform/api/challenges/<cid>/upload", "platform_upload",
+                    platform_upload, methods=["POST"])
 
     app.register_blueprint(bp)
     register_admin_plugin_menu_bar(title="Platform", route="/admin/platform")
@@ -222,7 +244,9 @@ PAGE = r"""
 
   async function api(method, path, body, raw) {
     const opts = {method, credentials: "same-origin", headers: {"CSRF-Token": NONCE}};
-    if (body !== undefined && !raw) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+    // CTFd accepts the CSRF-Token header only on JSON requests: send JSON
+    // (an empty object if there's no body) for every non-GET call
+    if (method !== "GET") { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body === undefined ? {} : body); }
     const r = await fetch(API + path, opts);
     let data = {};
     try { data = await r.json(); } catch (e) {}
