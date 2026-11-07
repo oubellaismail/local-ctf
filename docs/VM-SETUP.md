@@ -113,13 +113,24 @@ Follow [DRY-RUN.md](DRY-RUN.md) starting at **Phase 1**, with these changes for 
 - **Skip phase 0 and step 5.2's phone check for now.** They need bridged mode (below).
 - After Phase 2 passes, take another snapshot: **platform-deployed**.
 
-## 10. Later: bridged mode (other devices reach the VM)
+## 10. Bridged mode (other devices reach the VM)
 
-Shut the VM down → Settings → Network Adapter → **Bridged → Wi-Fi**. Start it, and
-check `ip -4 addr`. It should now have a campus IP (same range as your Mac's).
+1. Take a snapshot first (e.g. **before-bridged**).
+2. Shut down the VM → Settings → Network Adapter → **Bridged → Wi-Fi** (or
+   Ethernet). Start it.
+3. On the VM console: `ip -4 addr show ens33 | grep inet`. It should now have
+   an address in the **same range as your Mac's** (`ipconfig getifaddr en0` on
+   the Mac).
+   - **No address**, or only a `169.254.x.x` one: the network doesn't accept
+     bridged VMs (common on campus Wi-Fi that allows one device per login).
+     Go back to NAT; the event laptops will need native Ubuntu or Ethernet.
+4. SSH to the new address, then move the platform to it:
+   ```bash
+   cd ~/local-ctf && make reip
+   ```
+   About 3 minutes: k3s restarts, the certificate is reissued (same CA), and
+   the controller gets the new address for instance URLs.
+5. `make status`, then open `https://<new IP>` from the Mac **and a phone**
+   on the same Wi-Fi (dry-run steps 0.2 and 5.2).
 
-- If it gets **no IP**, or another device can't ping it, the campus Wi-Fi
-  doesn't allow bridged VMs. Then the event laptops have to run Ubuntu natively (no VM) or use Ethernet.
-- If it works, the IP changed, so `CTF_HOST`, the certificate and the k3s
-  node IP need updating (`make reip`, not written yet). Until then, revert to
-  the **clean-ubuntu** snapshot and redo the install with the new IP.
+To go back to NAT later: switch the adapter back, boot, `make reip` again.

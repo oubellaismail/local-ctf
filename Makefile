@@ -3,7 +3,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 S := scripts
 
-.PHONY: help install secrets build build-ctfd build-controller deploy ctfd-setup \
+.PHONY: help reip install secrets build build-ctfd build-controller deploy ctfd-setup \
         teams challenges push status logs stop-instances backup restore new-round \
         join-script test
 
@@ -55,6 +55,9 @@ logs: ## Follow CTFd + controller logs
 
 stop-instances: ## Stop every running challenge instance (end of round)
 	kubectl -n challenges scale deploy -l managed-by=ctf-controller --replicas=0
+
+reip: ## Move the platform to this laptop's new IP (optional IP=x.x.x.x)
+	bash $(S)/reip.sh $(IP)
 
 backup: ## Dump DB + secrets to backups/ (optional NAME=label)
 	bash $(S)/backup.sh $(NAME)

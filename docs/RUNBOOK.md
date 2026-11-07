@@ -64,3 +64,16 @@ kubectl -n ctfd exec -it mysql-0 -- sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD"
 docker exec ctf-registry ls /var/lib/registry/docker/registry/v2/repositories/challenges   # pushed images
 sudo journalctl -u k3s -f                            # k3s itself
 ```
+
+## The laptop's IP changed
+
+Symptoms: players can't reach `https://<old IP>`, `make status` fails, or
+`ip -4 addr` shows a different address than `CTF_HOST` in config.env.
+
+```bash
+make reip            # or: make reip IP=<address>
+```
+Then tell players the new address. Players who installed ca.crt keep
+trusting the new certificate. Agent laptops must re-join with the new
+`.secrets/join-agent.sh`. Best prevention: a DHCP reservation for the core
+laptop's MAC address.

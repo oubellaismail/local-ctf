@@ -79,6 +79,8 @@ Time). Challenges stay hidden until the start time.
 
 After the round: `make stop-instances`, then `make backup`, then copy `backups/` somewhere safe.
 
+Laptop got a new IP? `make reip` (see docs/RUNBOOK.md).
+
 New team mid-semester? Add it to the CSV and run `make teams CSV=data/teams.csv && make challenges`.
 
 ## Writing challenges
