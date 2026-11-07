@@ -38,8 +38,14 @@ class CTFd:
             page = nxt
 
     def challenges(self) -> dict[str, dict]:
-        """{name: challenge} including hidden ones."""
-        return {c["name"]: c for c in self._paged("/api/v1/challenges?view=admin")}
+        """{name: challenge} including hidden ones, with their state."""
+        out = {}
+        for c in self._paged("/api/v1/challenges?view=admin"):
+            # The list endpoint doesn't include "state"; the detail one does
+            if "state" not in c:
+                c["state"] = self._req("GET", f"/api/v1/challenges/{c['id']}").get("data", {}).get("state")
+            out[c["name"]] = c
+        return out
 
     def team_ids(self) -> list[str]:
         return [str(t["id"]) for t in self._paged("/api/v1/teams")]

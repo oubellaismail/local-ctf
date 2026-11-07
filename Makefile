@@ -24,7 +24,7 @@ build-ctfd: ## Rebuild CTFd image (after plugin/branding changes) and restart it
 	bash $(S)/build-images.sh ctfd && kubectl -n ctfd rollout restart deploy/ctfd
 
 build-controller: ## Rebuild controller image and restart it
-	bash $(S)/build-images.sh controller && kubectl -n ctfd rollout restart deploy/controller-api deploy/controller-daemon
+	bash $(S)/build-images.sh controller && kubectl -n ctfd rollout restart deploy/controller-api deploy/controller-daemon deploy/controller-admin
 
 deploy: ## Apply all platform manifests and wait until healthy
 	bash $(S)/deploy-platform.sh
