@@ -58,4 +58,4 @@ kubectl -n ctfd rollout status deployment/static-files --timeout=300s
 
 echo ""
 ok "Platform up: $CTFD_URL"
-echo "  Next: make ctfd-setup"
+[[ -n "${QUIET_NEXT:-}" ]] || echo "  Next (first install only): make ctfd-setup"

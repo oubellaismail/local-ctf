@@ -87,7 +87,7 @@ CTF_HOST="$NEW" bash "$ROOT/scripts/gen-secrets.sh" | sed 's/^/  /'
 
 # ── 5. platform (controller challenge URLs) ─────────────────────────────────
 info "5/6 platform manifests"
-CTF_HOST="$NEW" bash "$ROOT/scripts/deploy-platform.sh" | sed 's/^/  /'
+QUIET_NEXT=1 CTF_HOST="$NEW" bash "$ROOT/scripts/deploy-platform.sh" | sed 's/^/  /'
 
 # ── 6. agent join script ────────────────────────────────────────────────────
 info "6/6 agent join script"
