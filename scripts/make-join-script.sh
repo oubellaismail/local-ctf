@@ -12,6 +12,7 @@ load_config
 
 TOKEN="$(sudo cat /var/lib/rancher/k3s/server/node-token)"
 K3S_VER="$(k3s --version 2>/dev/null | awk 'NR==1 {print $3}')"
+CORE_NAME="$(hostname)"
 OUT="$SECRETS_DIR/join-agent.sh"
 
 cat > "$OUT" <<EOF
@@ -28,6 +29,21 @@ echo "Joining as \$NODE_IP → core \$CORE"
 
 curl -sf --max-time 5 -k https://\$CORE:6443/ping >/dev/null \\
   || { echo "Cannot reach https://\$CORE:6443 — same network? core firewall?"; exit 1; }
+
+# Node names must be unique: a cloned VM keeps the core's hostname
+if [[ "\$(hostname)" == "${CORE_NAME}" ]]; then
+  echo "This machine is also called '${CORE_NAME}' (cloned VM?). Rename it first:"
+  echo "  sudo hostnamectl set-hostname ctf-agent-1"
+  exit 1
+fi
+
+# Same settings as the core: no swap, and systemd-networkd must not delete
+# the pod routes when it restarts
+swapoff -a
+sed -i '/ swap /s/^[^#]/#&/' /etc/fstab
+mkdir -p /etc/systemd/networkd.conf.d
+printf '[Network]\nManageForeignRoutes=no\nManageForeignRoutingPolicyRules=no\n' \
+  > /etc/systemd/networkd.conf.d/local-ctf.conf
 
 # Keep awake
 systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target >/dev/null 2>&1 || true

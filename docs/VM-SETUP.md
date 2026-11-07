@@ -134,3 +134,38 @@ Follow [DRY-RUN.md](DRY-RUN.md) starting at **Phase 1**, with these changes for 
    on the same Wi-Fi (dry-run steps 0.2 and 5.2).
 
 To go back to NAT later: switch the adapter back, boot, `make reip` again.
+
+## 11. A second VM as the challenge node (dry-run Phase 8)
+
+No second laptop? A second VM on the same Mac works the same way.
+
+**Memory:** a 16 GB Mac can't run 10 GB + 4 GB VMs and macOS comfortably.
+Shut down `ctf-vm` and lower it to **8 GB**; the agent gets **4 GB**.
+
+1. **Clone:** in Fusion, select `ctf-vm` → Snapshots → **clean-ubuntu** →
+   *Create Full Clone*, named `ctf-agent`. (Plain Ubuntu, no k3s yet.)
+2. **Settings for `ctf-agent`:** 2 cores, 4096 MB, Network: **Bridged → Wi-Fi**
+   (same as `ctf-vm`, so they can reach each other).
+3. **Make the clone unique.** On its console:
+   ```bash
+   sudo hostnamectl set-hostname ctf-agent-1
+   sudo rm -f /etc/machine-id && sudo systemd-machine-id-setup
+   sudo rm -f /etc/ssh/ssh_host_* && sudo dpkg-reconfigure openssh-server
+   sudo reboot
+   ```
+   The machine-id matters: DHCP uses it to identify the machine, so two
+   VMs with the same one can be given the **same IP**.
+4. After the reboot: `ip -4 addr show ens33 | grep inet` should show its own
+   address, different from `ctf-vm`'s.
+5. **Join.** On `ctf-vm`:
+   ```bash
+   cd ~/local-ctf && make join-script
+   scp .secrets/join-agent.sh ctf@<agent IP>:
+   ```
+   On `ctf-agent-1`:
+   ```bash
+   sudo bash join-agent.sh
+   ```
+6. Continue with [DRY-RUN.md Phase 8](DRY-RUN.md). For 8.4 ("unplug laptop
+   B"), use Fusion → Virtual Machine → Network Adapter → **Disconnect** on
+   `ctf-agent`.
