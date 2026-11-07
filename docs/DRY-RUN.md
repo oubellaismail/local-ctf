@@ -166,8 +166,10 @@ Set `FLAG_PREFIX` to its real value, then `make deploy && make ctfd-setup TEAMS_
 
 ### Run 1: VMware Fusion VM (Ubuntu 24.04, 10 GB, NAT), 2026-11-06/07
 
-Passed: 1.x, 2.x, 3.x, 4.x, 5.1–5.11, 6.1, 6.3, 7.1–7.5.
-Not yet run: 0.2 and 5.2 from a phone (needs bridged networking), Phase 8.
+Passed: 0.2, 1.x, 2.x, 3.x, 4.x, 5.1–5.11, 6.1, 6.3, 7.1–7.5. **All pass
+criteria met.** 0.2/5.2/5.11 confirmed from a phone after switching the VM
+to bridged Wi-Fi and running `make reip` (172.16.130.155 → 192.168.1.116).
+Not yet run: Phase 8 (second laptop).
 
 Bugs found and fixed during the run:
 - `kubectl` needed sudo (KUBECONFIG not set for the user)
