@@ -112,8 +112,8 @@ Log in as a player of **team A**.
 | # | Do | Expect |
 |---|---|---|
 | 5.8 | log in as **team B** and submit **team A's** web flag | **Incorrect**. Admin side logs it as a cheating attempt |
-| 5.9 | `kubectl -n challenges exec deploy/team-<A>-example-nc-puzzle -- sh -c 'wget -qO- -T3 http://ctfd-service.ctfd.svc.cluster.local/ \|\| echo BLOCKED'` (start the instance first) | **BLOCKED**. ⚠ untested: network policies. If the page comes back, they aren't enforced: check `kubectl get netpol -A`, and that k3s wasn't started with `--disable-network-policy` |
-| 5.10 | same `exec`, target `http://<CTF_HOST>:5000/v2/` | BLOCKED |
+| 5.9 | Start team A's nc-puzzle instance, then test by **IP** (names don't resolve inside Alpine challenge images, which proves nothing): `S=$(kubectl -n ctfd get svc ctfd-service -o jsonpath='{.spec.clusterIP}'); kubectl -n challenges exec deploy/team-<A>-example-nc-puzzle -- wget -qO- -T3 http://$S/healthcheck` | `Connection refused` or `download timed out` (both = blocked by policy). ⚠ If it returns `ok`, policies aren't enforced: check `kubectl get netpol -A` and that k3s wasn't started with `--disable-network-policy` |
+| 5.10 | same `exec`, targets `http://<CTF_HOST>:5000/v2/` (registry) and `http://185.125.190.20/` (internet) | refused / timed out for both |
 | 5.11 | as admin: `kubectl -n ctfd logs deploy/ctfd \| tail` while the phone browses | the logged client IPs are the **phone's IP**, not 10.42.x.x. ⚠ untested: if they show 10.42.x.x, CTFd's per-IP rate limit would treat every player as one client |
 
 ## Phase 6: Timeout + load (15 min)
