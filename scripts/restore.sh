@@ -43,3 +43,6 @@ if [[ -f "$DIR/secrets/ctfd-admin.env" ]]; then
   ok "Admin token restored from backup"
 fi
 ok "Restored $DIR"
+echo ""
+echo "  Next: make challenges   (re-syncs team instances and flags with the"
+echo "        restored database; needed if the backup is from another round)"

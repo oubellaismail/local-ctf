@@ -132,7 +132,7 @@ Log in as a player of **team A**.
 | 7.2 | `make new-round` (type `reset`) | solves and challenges gone in CTFd, the 3 teams still there, `kubectl -n challenges get deploy` empty |
 | 7.3 | `make challenges` again | challenges back, team A's earlier solve is gone |
 | 7.4 | `make restore BACKUP=backups/<date>_dryrun` | team A's solve from 5.3 is back on the scoreboard |
-| 7.5 | `sudo reboot`, wait 3 min, then `make status` | everything Running again with no manual action. CTFd reachable from the phone |
+| 7.5 | `sudo reboot`, wait **3–4 min** (CTFd answers 503 until its health check passes), then `make status` | everything Running again with no manual action. CTFd reachable from the phone |
 
 ## Optional Phase 8: Second laptop (20 min)
 
@@ -159,3 +159,28 @@ make new-round MODE=full
 ```
 
 Set `FLAG_PREFIX` to its real value, then `make deploy && make ctfd-setup TEAMS_CSV=data/teams.csv`.
+
+---
+
+## Results log
+
+### Run 1: VMware Fusion VM (Ubuntu 24.04, 10 GB, NAT), 2026-11-06/07
+
+Passed: 1.x, 2.x, 3.x, 4.x, 5.1–5.11, 6.1, 6.3, 7.1–7.5.
+Not yet run: 0.2 and 5.2 from a phone (needs bridged networking), Phase 8.
+
+Bugs found and fixed during the run:
+- `kubectl` needed sudo (KUBECONFIG not set for the user)
+- 502s during every CTFd rolling restart (no preStop delay)
+- `/` returned 404 (setup never created CTFd's index page)
+- InfoDays theme forced on; now `BRANDING=false` by default
+- bulk_spawn DNS failure and ~8 s delay on every Start/status call: the
+  DHCP search domain (`localdomain`) went to a DNS server that never
+  answers. Fixed with `ndots:2` on controller and CTFd pods
+- Start button appeared late (CTFd re-renders the challenge modal)
+- Players logged out after visiting a web challenge: cookie name clash
+  (`session`). CTFd now uses a Secure `ctfd_session` cookie
+- Whole platform down after a systemd-networkd restart (deleted pod and
+  Docker routes). Installer now sets `ManageForeignRoutes=no`
+
+Capacity measured: platform ≈ 3 GB; example instances 1–25 MB each.

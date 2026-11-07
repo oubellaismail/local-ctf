@@ -26,7 +26,11 @@ NOT_READY=$(kubectl -n challenges get pods --no-headers 2>/dev/null | grep -v " 
 
 info "Endpoints"
 code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$CTFD_URL/healthcheck" || true)
-[[ "$code" == "200" ]] && ok "CTFd $CTFD_URL (HTTP 200)" || warn "CTFd $CTFD_URL → HTTP ${code:-timeout}"
+if [[ "$code" == "200" ]]; then
+  ok "CTFd $CTFD_URL (HTTP 200)"
+else
+  warn "CTFd $CTFD_URL → HTTP ${code:-timeout} (just booted or restarted? wait 1–2 min and re-run)"
+fi
 if curl -s --max-time 3 -o /dev/null "http://localhost:5000/v2/"; then ok "registry :5000"; else warn "registry :5000 not answering (docker ps)"; fi
 
 info "Disk (core laptop)"
