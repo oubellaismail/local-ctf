@@ -227,5 +227,8 @@ spec:
     matchLabels: {app: controller-admin}
   policyTypes: [Egress]
   egress:
-  - to: [{ipBlock: {cidr: "${CTF_HOST}/32"}}]
+  # Docker rewrites CTF_HOST:5000 to the registry container's address
+  # (Docker's default bridge, 172.17.0.0/16) before the policy is checked,
+  # so both have to be allowed.
+  - to: [{ipBlock: {cidr: "${CTF_HOST}/32"}}, {ipBlock: {cidr: 172.17.0.0/16}}]
     ports: [{protocol: TCP, port: 5000}]

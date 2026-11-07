@@ -205,11 +205,17 @@ async def upload(cid: str, request: Request):
     return {"ok": True, "kind": "files", "files": n, "next": "Deploy builds one zip per team"}
 
 
+def _one_at_a_time() -> None:
+    if runner.busy():
+        raise HTTPException(status_code=409, detail="another job is still running; wait for it to finish")
+
+
 @app.post("/challenges/{cid}/deploy", dependencies=[Depends(require_admin)])
 def deploy_one(cid: str, replace: int = 0):
     check_id(cid)
     if not ctx().store.get(cid):
         raise HTTPException(status_code=404, detail="unknown challenge")
+    _one_at_a_time()
     job = runner.submit(f"Deploy {cid}", lambda j: pipeline.deploy(
         ctx(), j, ids=[cid], state_for_new="hidden", replace_instances=bool(replace)))
     return {"job": job.id}
@@ -217,6 +223,7 @@ def deploy_one(cid: str, replace: int = 0):
 
 @app.post("/deploy-all", dependencies=[Depends(require_admin)])
 def deploy_all():
+    _one_at_a_time()
     job = runner.submit("Deploy all challenges",
                         lambda j: pipeline.deploy(ctx(), j, ids=None, state_for_new="hidden"))
     return {"job": job.id}
@@ -243,6 +250,7 @@ async def visibility(cid: str, request: Request):
 @app.delete("/challenges/{cid}", dependencies=[Depends(require_admin)])
 def delete_challenge(cid: str):
     check_id(cid)
+    _one_at_a_time()
     job = runner.submit(f"Delete {cid}", lambda j: pipeline.delete(ctx(), j, cid))
     return {"job": job.id}
 

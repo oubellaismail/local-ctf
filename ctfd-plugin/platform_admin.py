@@ -455,12 +455,21 @@ PAGE = r"""
   // ── Job progress ─────────────────────────────────────────────────────
   const ICON = {running: "⏳", done: "✔", failed: "✘"};
 
+  // While a job runs: disable the buttons that start jobs, keep the
+  // progress card in view
+  function setBusy(busy) {
+    document.querySelectorAll("#pf-rows button, #pf-deploy-all, #pf-editor-deploy")
+      .forEach(b => { if (!/Edit/.test(b.textContent)) b.disabled = busy; });
+  }
+
   function watch(jobId) {
     clearInterval(pollTimer);
     $("pf-job").classList.remove("d-none");
+    $("pf-job").scrollIntoView({behavior: "smooth", block: "center"});
+    setBusy(true);
     const tick = async () => {
       let j;
-      try { j = await api("GET", "jobs/" + jobId); } catch (e) { clearInterval(pollTimer); pollTimer = null; alertBox(e.message); return; }
+      try { j = await api("GET", "jobs/" + jobId); } catch (e) { clearInterval(pollTimer); pollTimer = null; setBusy(false); alertBox(e.message); return; }
       $("pf-job-title").textContent = j.title;
       const st = $("pf-job-status");
       st.textContent = j.status;
@@ -474,7 +483,10 @@ PAGE = r"""
       log.scrollTop = log.scrollHeight;
       if (j.status === "done" || j.status === "failed") {
         clearInterval(pollTimer); pollTimer = null;
+        setBusy(false);
         load();
+      } else {
+        setBusy(true);  // the table may have been redrawn meanwhile
       }
     };
     tick();
