@@ -169,7 +169,11 @@ Set `FLAG_PREFIX` to its real value, then `make deploy && make ctfd-setup TEAMS_
 Passed: 0.2, 1.x, 2.x, 3.x, 4.x, 5.1–5.11, 6.1, 6.3, 7.1–7.5. **All pass
 criteria met.** 0.2/5.2/5.11 confirmed from a phone after switching the VM
 to bridged Wi-Fi and running `make reip` (172.16.130.155 → 192.168.1.116).
-Not yet run: Phase 8 (second laptop).
+Phase 8 passed with a second VM (`ctf-agent-1`, bridged): join, image pull
+from the core's registry, instances scheduled on the agent and reachable via
+the core IP, network policy enforced on the agent, instances moved to the
+core ~5 min after the agent disconnected and back after it returned.
+`make reip` used twice (NAT → bridged, then a DHCP change).
 
 Bugs found and fixed during the run:
 - `kubectl` needed sudo (KUBECONFIG not set for the user)
