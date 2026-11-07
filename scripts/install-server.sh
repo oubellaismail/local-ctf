@@ -5,7 +5,7 @@
 # Challenge pods also run here unless an agent laptop joins.
 #
 # Usage:  make install          (or: bash scripts/install-server.sh)
-# Env:    K3S_VERSION=v1.31.4+k3s1   pin a k3s release (default: stable channel)
+# Env:    K3S_VERSION=v1.37.2+k3s1   k3s release (default: the version this release was tested with)
 #         SKIP_POWER_TWEAKS=1        don't disable sleep / lid suspend
 #
 # Idempotent: safe to re-run.
@@ -146,7 +146,7 @@ K3S_ARGS=(
 [[ -n "$CTF_HOSTNAME" ]] && K3S_ARGS+=(--tls-san "$CTF_HOSTNAME")
 if ! systemctl is-active --quiet k3s; then
   curl -sfL https://get.k3s.io | \
-    INSTALL_K3S_VERSION="${K3S_VERSION:-}" INSTALL_K3S_EXEC="${K3S_ARGS[*]}" sh - >/dev/null
+    INSTALL_K3S_VERSION="${K3S_VERSION:-v1.37.2+k3s1}" INSTALL_K3S_EXEC="${K3S_ARGS[*]}" sh - >/dev/null
 else
   ok "k3s already running (re-run with 'sudo systemctl restart k3s' after editing registries.yaml)"
 fi
