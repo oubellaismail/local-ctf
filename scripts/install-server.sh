@@ -51,6 +51,19 @@ fi
 "$ROOT/.venv/bin/pip" install -q -r "$ROOT/controller/requirements.txt" requests pyyaml
 ok "Python venv at .venv"
 
+# ── Keep systemd-networkd's hands off Kubernetes/Docker routes ─────────────
+# By default, when systemd-networkd restarts (e.g. after an automatic systemd
+# security update) it deletes every route it didn't create itself: the
+# flannel/cni0 pod routes and Docker's route to the registry container.
+# Result: pods can't reach the API server, nothing can pull images, the whole
+# platform goes down until docker + k3s are restarted.
+if [[ -d /etc/systemd/network || -d /run/systemd/network ]]; then
+  sudo mkdir -p /etc/systemd/networkd.conf.d
+  printf '[Network]\nManageForeignRoutes=no\nManageForeignRoutingPolicyRules=no\n' | \
+    sudo tee /etc/systemd/networkd.conf.d/local-ctf.conf >/dev/null
+  ok "systemd-networkd won't delete pod/Docker routes"
+fi
+
 # ── 3. Keep the laptop awake ────────────────────────────────────────────────
 if [[ -z "${SKIP_POWER_TWEAKS:-}" ]]; then
   info "Disabling sleep and lid-close suspend"
