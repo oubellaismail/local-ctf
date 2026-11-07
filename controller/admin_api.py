@@ -40,6 +40,9 @@ from k8s_client import init_k8s_client
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
 logger = logging.getLogger("admin_api")
 
+# One line per HTTP request drowns the deploy log
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 ADMIN_KEY = os.environ.get("ADMIN_KEY", "")
 MAX_TAR_BYTES = int(os.environ.get("MAX_IMAGE_MB", "1024")) * 1024 * 1024
 MAX_ZIP_BYTES = 50 * 1024 * 1024

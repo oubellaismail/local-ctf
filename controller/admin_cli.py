@@ -13,6 +13,7 @@ Same code as the dashboard's Deploy button, so both behave the same.
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import shutil
 import sys
@@ -20,6 +21,9 @@ import sys
 import pipeline
 from jobs import run_inline
 from k8s_client import init_k8s_client
+
+# One line per HTTP request drowns the deploy log
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 def main() -> int:

@@ -163,7 +163,7 @@ def create_secret(core_v1: Any, team_id: str, challenge: dict) -> str:
         return "created"
     except ApiException as e:
         if e.status == 409:
-            logger.info(f"Skipped (exists): {sec_name}")
+            logger.debug(f"Skipped (exists): {sec_name}")
             return "skipped"
         raise
 
@@ -280,7 +280,7 @@ def create_deployment(apps_v1: Any, team_id: str, challenge: dict) -> str:
         return "created"
     except ApiException as e:
         if e.status == 409:
-            logger.info(f"Skipped (exists): {dep_name}")
+            logger.debug(f"Skipped (exists): {dep_name}")
             return "skipped"
         raise
 
@@ -335,7 +335,7 @@ def create_service(core_v1: Any, team_id: str, challenge: dict) -> str:
         return "created"
     except ApiException as e:
         if e.status == 409:
-            logger.info(f"Skipped (exists): {svc_name}")
+            logger.debug(f"Skipped (exists): {svc_name}")
             return "skipped"
         raise
 
@@ -362,7 +362,7 @@ def spawn_one(clients: tuple[Any, Any, Any], team: dict, challenge: dict) -> dic
         create_secret(core_v1, team_id, challenge)
 
         # Create deployment
-        create_deployment(apps_v1, team_id, challenge)
+        dep = create_deployment(apps_v1, team_id, challenge)
 
         # Create service (NodePort for tcp/http)
         create_service(core_v1, team_id, challenge)
@@ -370,7 +370,8 @@ def spawn_one(clients: tuple[Any, Any, Any], team: dict, challenge: dict) -> dic
         return {
             "team_id": team_id,
             "challenge_id": challenge_id,
-            "status": "created",
+            # The deployment is the instance: count it, not its secret/service
+            "status": "created" if dep == "created" else "skipped",
             "error": None,
         }
     except Exception as e:
