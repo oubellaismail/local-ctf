@@ -22,6 +22,10 @@ kubectl -n ctfd exec mysql-0 -- sh -c \
 SIZE=$(gzip -dc "$DIR/ctfd.sql.gz" | wc -c)
 (( SIZE > 1000 )) || die "Dump looks empty ($SIZE bytes) — is mysql-0 running?"
 
+# Challenges added from the dashboard exist only in the cluster
+kubectl -n ctfd get configmap challenge-manifests -o yaml 2>/dev/null \
+  | grep -vE '^\s+(resourceVersion|uid|creationTimestamp):' > "$DIR/challenge-manifests.yaml" || true
+
 cp -r "$SECRETS_DIR" "$DIR/secrets"
 cp "$CONFIG_FILE" "$DIR/config.env"
 ok "Backup: backups/$STAMP ($(du -sh "$DIR" | cut -f1))"

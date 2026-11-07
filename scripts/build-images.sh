@@ -25,13 +25,8 @@ case "$WHAT" in
     build_push controller "$ROOT/controller"
     ;;&
   all)
-    # Placeholder static-files image so the deployment starts before any
-    # static challenge exists. make static replaces it.
-    if [[ ! -d "$ROOT/build/static" ]]; then
-      mkdir -p "$ROOT/build/static"
-      : > "$ROOT/build/static/.keep"
-    fi
-    build_push static-files -f "$ROOT/static-files/Dockerfile" "$ROOT/build/static"
+    # nginx only; the zips live on the platform-data volume
+    build_push static-files "$ROOT/static-files"
     ;;
   ctfd|controller) ;;
   *) die "Unknown target '$WHAT' (ctfd|controller|all)" ;;

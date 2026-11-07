@@ -1,8 +1,9 @@
 # Three service accounts with least privilege in the challenges namespace:
 #   ctf-controller   runtime API: list/scale deployments, read NodePorts
 #   ctf-daemon       lifetime daemon: scale expired deployments to 0
-#   ctf-provisioner  bulk_spawn: create deployments/services/flag secrets
-#                    (pod only runs while deploying challenges)
+#   ctf-provisioner  controller-admin: create/delete team deployments,
+#                    services and flag secrets; in ctfd: edit the
+#                    challenge-manifests ConfigMap, restart controller-api
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -101,3 +102,35 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: ctf-provisioner
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ctf-admin
+  namespace: ctfd
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["challenge-manifests"]
+  verbs: ["get", "update", "patch"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create"]   # create can't be limited by name
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  resourceNames: ["controller-api"]
+  verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ctf-admin
+  namespace: ctfd
+subjects:
+- kind: ServiceAccount
+  name: ctf-provisioner
+  namespace: ctfd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ctf-admin

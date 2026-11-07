@@ -8,6 +8,7 @@ Idempotent: safe to re-run. Skips flags that already exist.
 import os
 import sys
 import argparse
+from typing import Optional
 import logging
 from typing import Any
 
@@ -15,6 +16,7 @@ import httpx
 
 from flag import derive_flag
 from manifest_loader import load_manifests, load_flag_entries
+from manifests import expand_flag_entries
 
 logger = logging.getLogger(__name__)
 
@@ -202,7 +204,12 @@ def register_bundle_challenge(ctfd_url: str, admin_token: str, ctfd_challenge_id
 
 
 def main(ctfd_url: str, admin_token: str) -> None:
-    """Entry point for flag import workflow."""
+    """Entry point for flag import workflow (manifests from the mounted dir)."""
+    run(ctfd_url, admin_token)
+
+
+def run(ctfd_url: str, admin_token: str, manifests: Optional[list] = None) -> dict:
+    """Register team-bound flags in CTFd. Returns {"created", "skipped", "errors"}."""
     logger.info("Starting flag import (team-bound mode)...")
 
     # CTF_MASTER_SECRET must be set — used at validation time by CTFd, not here
@@ -212,7 +219,8 @@ def main(ctfd_url: str, admin_token: str) -> None:
     challenge_id_map = fetch_challenges(ctfd_url, admin_token)
 
     # Split entries into single-flag and bundle groups
-    all_entries = [c for c in load_flag_entries() if c.get("id") and c.get("name")]
+    entries = load_flag_entries() if manifests is None else expand_flag_entries(manifests)
+    all_entries = [c for c in entries if c.get("id") and c.get("name")]
     logger.info(f"Loaded {len(all_entries)} flag entries (including bundle expansions)")
 
     # Group bundle entries by parent_id
@@ -271,6 +279,7 @@ def main(ctfd_url: str, admin_token: str) -> None:
             errors += 1
 
     logger.info(f"Done: {created} created/registered, {skipped} skipped, {errors} errors")
+    return {"created": created, "skipped": skipped, "errors": errors}
 
 
 if __name__ == "__main__":

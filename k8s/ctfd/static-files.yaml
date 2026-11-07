@@ -1,6 +1,18 @@
 # Serves per-team zips for "static" challenges: /{challenge_id}/{team_id}.zip
 # Only reachable from CTFd; the plugin's /download/<id> endpoint checks the
-# player's team and proxies the right zip. Built by: make static
+# player's team and proxies the right zip. controller-admin writes them to
+# the platform-data volume (static/), mounted here read-only.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: platform-data
+  namespace: ctfd
+spec:
+  accessModes: [ReadWriteOnce]   # both users run on the core node
+  storageClassName: local-path
+  resources:
+    requests: {storage: 20Gi}
+---
 apiVersion: v1
 kind: Service
 metadata:
@@ -43,3 +55,8 @@ spec:
         securityContext:
           allowPrivilegeEscalation: false
           capabilities: {drop: [ALL]}
+        volumeMounts:
+        - {name: data, mountPath: /data, readOnly: true}
+      volumes:
+      - name: data
+        persistentVolumeClaim: {claimName: platform-data}

@@ -12,7 +12,7 @@ import logging
 import base64
 import json
 import concurrent.futures
-from typing import Any
+from typing import Optional, Any
 
 import httpx
 from kubernetes.client import ApiException
@@ -387,23 +387,34 @@ def spawn_one(clients: tuple[Any, Any, Any], team: dict, challenge: dict) -> dic
 
 
 def main(ctfd_url: str, admin_token: str) -> None:
-    """Entry point for bulk_spawn workflow."""
+    """Entry point for bulk_spawn workflow (manifests from the mounted dir)."""
+    run(ctfd_url, admin_token)
+
+
+def run(ctfd_url: str, admin_token: str, manifests: Optional[list] = None,
+        clients: Optional[tuple] = None) -> dict:
+    """Create the stopped per-team instances. Existing ones are skipped.
+
+    manifests: challenge manifests to consider (default: the mounted
+    challenges/manifests dir). Returns {"created", "skipped", "errors"}.
+    """
     logger.info("Starting bulk_spawn...")
 
     # Validate env var
     if not os.getenv("CTF_MASTER_SECRET"):
         raise ValueError("CTF_MASTER_SECRET env var not set")
 
-    # Initialize K8s clients
-    apps_v1, core_v1, net_v1 = init_k8s_client()
-    clients = (apps_v1, core_v1, net_v1)
+    if clients is None:
+        clients = init_k8s_client()
 
     # Fetch teams from CTFd
     teams = fetch_teams(ctfd_url, admin_token)
     logger.info(f"Fetched {len(teams)} teams")
 
     # Service challenges only (type http/tcp) — static challenges have no pods
-    challenges = [c for c in load_manifests() if c.get("type") in ("http", "tcp")]
+    if manifests is None:
+        manifests = load_manifests()
+    challenges = [c for c in manifests if c.get("type") in ("http", "tcp")]
     logger.info(f"Loaded {len(challenges)} service challenges")
 
     created = 0
@@ -437,6 +448,7 @@ def main(ctfd_url: str, admin_token: str) -> None:
                 logger.error(f"Exception collecting result: {e}")
 
     logger.info(f"Done: {created} created, {skipped} skipped, {errors} errors")
+    return {"created": created, "skipped": skipped, "errors": errors}
 
 
 if __name__ == "__main__":

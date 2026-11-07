@@ -2,7 +2,8 @@
 # gen-secrets.sh — create platform secrets and the HTTPS certificate, then
 # load them into the cluster.
 #
-#   .secrets/platform.env   CTF_MASTER_SECRET, DB passwords, CONTROLLER_KEY
+#   .secrets/platform.env   CTF_MASTER_SECRET, DB passwords, CONTROLLER_KEY,
+#                           ADMIN_KEY (CTFd <-> controller-admin, the dashboard)
 #   .secrets/ca.crt/.key    local certificate authority (give ca.crt to players
 #                           who want to remove the browser warning)
 #   .secrets/tls.crt/.key   CTFd certificate for CTF_HOST / CTF_HOSTNAME
@@ -28,11 +29,17 @@ MYSQL_ROOT_PASSWORD=$(random_secret 24)
 MYSQL_PASSWORD=$(random_secret 24)
 CTFD_SECRET_KEY=$(random_secret 48)
 CONTROLLER_KEY=$(random_secret 32)
+ADMIN_KEY=$(random_secret 32)
 EOF
   chmod 600 "$SECRETS_DIR/platform.env"
   ok "Generated .secrets/platform.env"
 else
   ok "Keeping existing .secrets/platform.env"
+fi
+# Added in v1.1 (dashboard): append to older installs, keep everything else
+if ! grep -q '^ADMIN_KEY=' "$SECRETS_DIR/platform.env"; then
+  echo "ADMIN_KEY=$(random_secret 32)" >> "$SECRETS_DIR/platform.env"
+  ok "Added ADMIN_KEY (dashboard)"
 fi
 load_secrets
 
@@ -83,4 +90,17 @@ kubectl -n ctfd create secret tls ctfd-tls \
   --cert="$SECRETS_DIR/tls.crt" --key="$SECRETS_DIR/tls.key" \
   --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 
-ok "ctfd-secrets, controller-key, ctfd-tls"
+kubectl -n ctfd create secret generic controller-admin-key \
+  --from-literal=ADMIN_KEY="$ADMIN_KEY" \
+  --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+
+[[ -f "$SECRETS_DIR/registry.env" ]] || die "Missing .secrets/registry.env (written by make install)"
+# shellcheck source=/dev/null
+. "$SECRETS_DIR/registry.env"
+kubectl -n ctfd create secret generic registry-creds \
+  --from-literal=REGISTRY_USER="$REGISTRY_USER" \
+  --from-literal=REGISTRY_PASSWORD="$REGISTRY_PASSWORD" \
+  --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+sync_admin_token_secret
+
+ok "ctfd-secrets, controller-key, controller-admin-key, registry-creds, ctfd-tls"

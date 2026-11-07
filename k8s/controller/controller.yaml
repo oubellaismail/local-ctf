@@ -1,8 +1,9 @@
 # Challenge controller:
 #   controller-api          CTFd plugin calls it to start/stop/status instances
 #   controller-daemon       stops instances after INSTANCE_LIFETIME_MINUTES
-#   controller-provisioner  idle (replicas 0); deploy-challenge.sh scales it
-#                           up to run bulk_spawn / import_flags, then back down
+#   controller-admin        dashboard backend (Admin → Platform in CTFd) and
+#                           the deploy pipeline `make challenges` runs
+#                           (push images, create team instances, flags, zips)
 apiVersion: v1
 kind: Service
 metadata:
@@ -130,24 +131,32 @@ spec:
           allowPrivilegeEscalation: false
           capabilities: {drop: [ALL]}
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: controller-admin
+  namespace: ctfd
+spec:
+  selector: {app: controller-admin}
+  ports:
+  - {name: http, port: 5001, targetPort: 5001}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: controller-provisioner
+  name: controller-admin
   namespace: ctfd
 spec:
-  replicas: 0
+  replicas: 1
+  # One process holds the job queue, and the data volume is node-local
+  strategy: {type: Recreate}
   selector:
-    matchLabels: {app: controller-provisioner}
+    matchLabels: {app: controller-admin}
   template:
     metadata:
-      labels: {app: controller-provisioner}
+      labels: {app: controller-admin}
     spec:
       serviceAccountName: ctf-provisioner
-      # Alpine (musl) gives up on a lookup if ANY search-domain query fails,
-      # and the node's DHCP search domain (e.g. "localdomain") is forwarded
-      # to the LAN's DNS, which may time out. ndots:2 makes full names like
-      # ctfd-service.ctfd.svc.cluster.local resolve directly, no search list.
       dnsConfig:
         options: [{name: ndots, value: "2"}]
       nodeSelector:
@@ -158,27 +167,65 @@ spec:
         runAsGroup: 1000
         seccompProfile: {type: RuntimeDefault}
       containers:
-      - name: controller-provisioner
+      - name: controller-admin
         image: ${REGISTRY}/controller:latest
         imagePullPolicy: Always
-        command: ["sh", "-c", "sleep infinity"]
+        # Single worker on purpose: jobs and their progress live in memory
+        command: ["uvicorn", "admin_api:app", "--host", "0.0.0.0", "--port", "5001", "--workers", "1"]
         env:
+        - name: ADMIN_KEY
+          valueFrom: {secretKeyRef: {name: controller-admin-key, key: ADMIN_KEY}}
         - name: CTF_MASTER_SECRET
           valueFrom: {secretKeyRef: {name: ctfd-secrets, key: CTF_MASTER_SECRET}}
         - name: FLAG_PREFIX
           value: "${FLAG_PREFIX}"
+        - name: CTFD_URL
+          value: http://ctfd-service.ctfd.svc.cluster.local
+        - name: REGISTRY_PUSH
+          value: "${CTF_HOST}:5000"
+        - name: REGISTRY_USER
+          valueFrom: {secretKeyRef: {name: registry-creds, key: REGISTRY_USER}}
+        - name: REGISTRY_PASSWORD
+          valueFrom: {secretKeyRef: {name: registry-creds, key: REGISTRY_PASSWORD}}
+        - name: DATA_DIR
+          value: /data
+        ports:
+        - containerPort: 5001
+        readinessProbe:
+          httpGet: {path: /health, port: 5001}
+          periodSeconds: 10
+        livenessProbe:
+          httpGet: {path: /health, port: 5001}
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
         resources:
           requests: {cpu: 100m, memory: 128Mi}
-          limits: {cpu: "1", memory: 512Mi}
+          limits: {cpu: "1", memory: 768Mi}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities: {drop: [ALL]}
         volumeMounts:
-        - name: manifests
-          mountPath: /app/challenges/manifests
-          readOnly: true
+        - {name: data, mountPath: /data}
+        # Written by make ctfd-setup; read on every use, so no restart needed
+        - {name: ctfd-token, mountPath: /secrets/ctfd, readOnly: true}
       volumes:
-      - name: manifests
-        configMap:
-          name: challenge-manifests
-          optional: true
+      - name: data
+        persistentVolumeClaim: {claimName: platform-data}
+      - name: ctfd-token
+        secret: {secretName: ctfd-admin-token, optional: true}
+---
+# controller-admin → Kubernetes API, CTFd, and the registry (image pushes).
+# Here and not in base/ because it needs CTF_HOST.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: controller-admin-registry
+  namespace: ctfd
+spec:
+  podSelector:
+    matchLabels: {app: controller-admin}
+  policyTypes: [Egress]
+  egress:
+  - to: [{ipBlock: {cidr: "${CTF_HOST}/32"}}]
+    ports: [{protocol: TCP, port: 5000}]

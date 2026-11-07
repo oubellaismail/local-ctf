@@ -68,6 +68,31 @@ load_secrets() {
   set +a
 }
 
+# Copy the CTFd admin token into the cluster, where controller-admin (the
+# dashboard) reads it. Call after anything that changes ctfd-admin.env.
+sync_admin_token_secret() {
+  if [[ -f "$SECRETS_DIR/ctfd-admin.env" ]]; then
+    (
+      # shellcheck source=/dev/null
+      . "$SECRETS_DIR/ctfd-admin.env"
+      [[ -n "${CTFD_ADMIN_TOKEN:-}" ]] || exit 0
+      kubectl -n ctfd create secret generic ctfd-admin-token \
+        --from-literal=CTFD_ADMIN_TOKEN="$CTFD_ADMIN_TOKEN" \
+        --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+    )
+  else
+    kubectl -n ctfd delete secret ctfd-admin-token --ignore-not-found >/dev/null
+  fi
+}
+
+# Name of the running controller-admin pod (dashboard backend / deploy pipeline)
+admin_pod() {
+  kubectl -n ctfd rollout status deployment/controller-admin --timeout=180s >/dev/null \
+    || die "controller-admin isn't running: kubectl -n ctfd get pods -l app=controller-admin"
+  kubectl -n ctfd get pods -l app=controller-admin --field-selector=status.phase=Running \
+    -o jsonpath='{.items[0].metadata.name}'
+}
+
 # CTFd admin token, written by setup-ctfd.sh.
 load_admin_token() {
   if [[ -f "$SECRETS_DIR/ctfd-admin.env" ]]; then

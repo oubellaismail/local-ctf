@@ -26,6 +26,8 @@ the [results log](docs/DRY-RUN.md#results-log).
 - **Round lifecycle**: one command each to start a new round, back up and restore
 - **Survives reboots** and DHCP address changes (`make reip`)
 - **Optional second laptop** for challenge instances, with automatic failover
+- **Admin dashboard** (next release, `dashboard` branch): add, upload and deploy
+  challenges from CTFd's admin panel ([docs/DASHBOARD.md](docs/DASHBOARD.md))
 
 Sized for about **20 teams × 4 running instances** on a 16 GB Ubuntu laptop.
 The platform itself uses about 3 GB, and a typical instance 1–50 MB.

@@ -9,6 +9,8 @@ need envsubst
 kubectl_ready
 
 kubectl get secret ctfd-secrets -n ctfd >/dev/null 2>&1 || die "Secrets missing — run: make secrets"
+kubectl get secret controller-admin-key -n ctfd >/dev/null 2>&1 \
+  || die "Dashboard secrets missing (new in v1.1) — run: make secrets"
 
 info "Applying base (namespaces, RBAC, limits, network policies)"
 kubectl apply -f "$ROOT/k8s/base/" >/dev/null
@@ -47,7 +49,9 @@ if ! kubectl get configmap challenge-manifests -n ctfd >/dev/null 2>&1; then
     --from-file="$ROOT/challenges/manifests" >/dev/null
 fi
 apply_tpl "$ROOT/k8s/controller/controller.yaml" >/dev/null
-ok "controller-api, controller-daemon, controller-provisioner"
+# v1.0 ran bulk_spawn in a scaled-to-zero "provisioner"; controller-admin replaces it
+kubectl -n ctfd delete deployment controller-provisioner --ignore-not-found >/dev/null
+ok "controller-api, controller-daemon, controller-admin"
 
 info "Waiting for the rest"
 kubectl -n ctfd rollout status statefulset/redis --timeout=300s
@@ -55,6 +59,7 @@ start_ctfd
 kubectl -n ctfd rollout status deployment/controller-api --timeout=300s
 kubectl -n ctfd rollout status deployment/controller-daemon --timeout=300s
 kubectl -n ctfd rollout status deployment/static-files --timeout=300s
+kubectl -n ctfd rollout status deployment/controller-admin --timeout=300s
 
 echo ""
 ok "Platform up: $CTFD_URL"

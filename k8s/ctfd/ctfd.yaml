@@ -76,6 +76,8 @@ spec:
           valueFrom: {secretKeyRef: {name: ctfd-secrets, key: CTF_MASTER_SECRET}}
         - name: FLAG_PREFIX
           value: "${FLAG_PREFIX}"
+        - name: CONTROLLER_ADMIN_KEY
+          valueFrom: {secretKeyRef: {name: controller-admin-key, key: ADMIN_KEY}}
         - name: CTF_BRANDING
           value: "${BRANDING}"
         - name: STATIC_FILES_URL

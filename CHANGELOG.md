@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased (dashboard branch)
+
+### Added
+- **Admin → Platform** page in CTFd: create a challenge with a form, upload a
+  `docker save` image or a zip of `{{FLAG}}` files, Deploy with live
+  progress, Show/Hide, Delete. See [docs/DASHBOARD.md](docs/DASHBOARD.md)
+- `controller-admin` service (dashboard backend, single job queue) replacing
+  the scaled-to-zero provisioner; pushes images with `crane`
+- `platform-data` volume for uploads and per-team download zips
+
+### Changed
+- `make challenges` runs the same deploy pipeline as the dashboard and no
+  longer replaces challenges added from the browser
+- Download zips are served from the volume instead of being built into the
+  static-files image
+- `make new-round` also clears the challenge list and uploaded files;
+  `make backup` / `make restore` include the challenge list
+- New secrets: `ADMIN_KEY`, `controller-admin-key`, `registry-creds`,
+  `ctfd-admin-token` (`make secrets`, `make ctfd-setup`)
+
 ## v1.0.0 (2026-11-07)
 
 First release. The InfoDays cloud CTF platform, rebuilt to run on one or two

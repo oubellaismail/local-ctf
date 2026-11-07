@@ -19,4 +19,5 @@ export PYTHON="$ROOT/.venv/bin/python"
 [[ -x "$PYTHON" ]] || PYTHON=python3
 export TEAMS_CSV="${TEAMS_CSV:-}"
 
-exec bash "$ROOT/scripts/setup-ctfd.sh"
+bash "$ROOT/scripts/setup-ctfd.sh"
+sync_admin_token_secret

@@ -28,6 +28,10 @@ info "Removing all challenge instances"
 kubectl -n challenges delete deployment,service,secret -l managed-by=ctf-controller --wait=false >/dev/null
 ok "challenge resources deleted"
 
+info "Clearing the round's challenge list and uploaded files"
+kubectl -n ctfd exec "$(admin_pod)" -- python3 admin_cli.py clear >/dev/null
+ok "manifests and download files cleared (images stay in the registry)"
+
 mysql_exec() {
   kubectl -n ctfd exec -i mysql-0 -- sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" ctfd 2>/dev/null'
 }
@@ -60,10 +64,12 @@ else
     | kubectl -n ctfd exec -i mysql-0 -- sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" 2>/dev/null'
   kubectl -n ctfd exec redis-0 -- redis-cli FLUSHALL >/dev/null
   rm -f "$SECRETS_DIR/ctfd-admin.env"
+  sync_admin_token_secret
   start_ctfd >/dev/null
   ok "Fresh CTFd. Next: make ctfd-setup TEAMS_CSV=data/teams.csv"
 fi
 
 rm -rf "$ROOT/build/static"
 echo ""
-echo "Next: update challenges/manifests/ for the new round, then: make challenges"
+echo "Next: add the round's challenges in Admin → Platform, or put them in"
+echo "challenges/manifests/ and run: make challenges"

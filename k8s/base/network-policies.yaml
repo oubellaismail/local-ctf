@@ -92,11 +92,11 @@ spec:
           kubernetes.io/metadata.name: kube-system
     - podSelector:
         matchExpressions:
-        - {key: app, operator: In, values: [controller-api, controller-provisioner]}
+        - {key: app, operator: In, values: [controller-api, controller-admin]}
     ports:
     - {protocol: TCP, port: 8000}
 ---
-# CTFd → MySQL, Redis, controller API, static files
+# CTFd → MySQL, Redis, controller API, controller-admin, static files
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -113,6 +113,8 @@ spec:
     ports: [{protocol: TCP, port: 6379}]
   - to: [{podSelector: {matchLabels: {app: controller-api}}}]
     ports: [{protocol: TCP, port: 5000}]
+  - to: [{podSelector: {matchLabels: {app: controller-admin}}}]
+    ports: [{protocol: TCP, port: 5001}]
   - to: [{podSelector: {matchLabels: {app: static-files}}}]
     ports: [{protocol: TCP, port: 8080}]
 ---
@@ -158,6 +160,19 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
+  name: controller-admin-ingress
+  namespace: ctfd
+spec:
+  podSelector:
+    matchLabels: {app: controller-admin}
+  policyTypes: [Ingress]
+  ingress:
+  - from: [{podSelector: {matchLabels: {app: ctfd}}}]
+    ports: [{protocol: TCP, port: 5001}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
   name: static-files-ingress
   namespace: ctfd
 spec:
@@ -179,7 +194,7 @@ metadata:
 spec:
   podSelector:
     matchExpressions:
-    - {key: app, operator: In, values: [controller-api, controller-daemon, controller-provisioner]}
+    - {key: app, operator: In, values: [controller-api, controller-daemon, controller-admin]}
   policyTypes: [Egress]
   egress:
   - to: [{ipBlock: {cidr: 0.0.0.0/0}}]

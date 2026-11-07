@@ -1272,6 +1272,10 @@ def load(app):
 
     app.register_blueprint(blueprint)
 
+    # ── Admin → Platform (dashboard) ─────────────────────────────────────────
+    from .platform_admin import register_platform_admin
+    register_platform_admin(app)
+
     # ── Register custom flag + challenge types ────────────────────────────────
     from CTFd.plugins.flags import FLAG_CLASSES
     FLAG_CLASSES["team"] = CTFdTeamFlag

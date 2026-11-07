@@ -42,6 +42,11 @@ if [[ -f "$DIR/secrets/ctfd-admin.env" ]]; then
   cp "$DIR/secrets/ctfd-admin.env" "$SECRETS_DIR/ctfd-admin.env"
   ok "Admin token restored from backup"
 fi
+sync_admin_token_secret
+if [[ -f "$DIR/challenge-manifests.yaml" ]]; then
+  kubectl apply -f "$DIR/challenge-manifests.yaml" >/dev/null
+  ok "Challenge manifests restored"
+fi
 ok "Restored $DIR"
 echo ""
 echo "  Next: make challenges   (re-syncs team instances and flags with the"
