@@ -9,9 +9,10 @@ It is the [InfoDays CTF](#compared-with-the-infodays-cloud-version) platform
 (DigitalOcean + Kubernetes), rebuilt on [k3s](https://k3s.io) so it needs no
 cloud account and no internet during a round.
 
-**Current release: v1.0.0.** Passed a full dry run (install, play, cheating
-and isolation checks, backup/restore, reboot, IP change, second node). See
-the [results log](docs/DRY-RUN.md#results-log).
+**Current release: v1.1.0.** Passed a full dry run (install, play, cheating
+and isolation checks, backup/restore, reboot, IP change, second node; see
+the [results log](docs/DRY-RUN.md#results-log)) and the dashboard checklist
+([docs/DASHBOARD.md](docs/DASHBOARD.md)).
 
 ## Features
 
@@ -26,8 +27,9 @@ the [results log](docs/DRY-RUN.md#results-log).
 - **Round lifecycle**: one command each to start a new round, back up and restore
 - **Survives reboots** and DHCP address changes (`make reip`)
 - **Optional second laptop** for challenge instances, with automatic failover
-- **Admin dashboard** (next release, `dashboard` branch): add, upload and deploy
-  challenges from CTFd's admin panel ([docs/DASHBOARD.md](docs/DASHBOARD.md))
+- **Admin dashboard** (Admin → Platform in CTFd): add a challenge with a form,
+  upload its `docker save` image or files, deploy it to every team, show/hide
+  and delete it ([docs/DASHBOARD.md](docs/DASHBOARD.md))
 
 Sized for about **20 teams × 4 running instances** on a 16 GB Ubuntu laptop.
 The platform itself uses about 3 GB, and a typical instance 1–50 MB.
@@ -169,10 +171,22 @@ Never commit `config.env`, `.secrets/`, `data/*.csv` or `backups/`
 
 ## Roadmap
 
-Next: an **admin dashboard** inside CTFd (upload a challenge image, deploy it
-to every team, manage instances and rounds from the browser) and a
-**ready-made VM image** that sets itself up on first boot. See
-[docs/DESIGN-DASHBOARD.md](docs/DESIGN-DASHBOARD.md).
+**v1.2 (in progress):**
+- Cheaters and Account Sharing pages inside the admin panel, with an alert on
+  the Platform page
+- Per challenge: **same flag for everyone** as an alternative to per-team
+  flags, and **fixed points** as an alternative to dynamic scoring
+- **Test** button: a private admin instance with its expected flag
+- Clearer dialogs and a guided New challenge flow (details → upload →
+  deploy → test → show)
+- **Instances** page (running instances, stop/restart/logs/extend, stop all)
+- **Health banner** (nodes, memory, registry, IP-change warning)
+- Admin **flag lookup** (which team/challenge a flag belongs to)
+- Player **countdown and Extend** on running instances
+
+**Later:** building challenges from an uploaded Dockerfile, backup/new
+round/restore from the browser, and a ready-made VM image that sets itself
+up on first boot ([docs/DESIGN-DASHBOARD.md](docs/DESIGN-DASHBOARD.md)).
 
 ## License
 

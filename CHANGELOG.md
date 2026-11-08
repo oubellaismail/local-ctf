@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased (dashboard branch)
+## v1.1.0 (2026-11-08)
+
+Admin dashboard: add challenges from the browser. Tested on the dry-run VM
+with the D1–D17 checklist in [docs/DASHBOARD.md](docs/DASHBOARD.md).
 
 ### Added
 - **Admin → Platform** page in CTFd: create a challenge with a form, upload a
@@ -19,6 +22,19 @@
   `make backup` / `make restore` include the challenge list
 - New secrets: `ADMIN_KEY`, `controller-admin-key`, `registry-creds`,
   `ctfd-admin-token` (`make secrets`, `make ctfd-setup`)
+- "Deploy all" skips download challenges that have no files yet instead of
+  failing; `make challenges` rebuilds repo zips after a new round or restore
+- `make build-controller` also restarts controller-admin
+
+### Fixed
+- bulk_spawn reported existing instances as "created"
+
+### Upgrading from v1.0.0
+```bash
+git fetch && git checkout v1.1.0
+make secrets && make build && make deploy && make ctfd-setup && make challenges
+```
+Set `CTFD_VERSION=3.8.9` in config.env if it still says `latest`.
 
 ## v1.0.0 (2026-11-07)
 
