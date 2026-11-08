@@ -70,8 +70,11 @@ ConfigMap) and run the same deploy code:
 - `make new-round` clears the list, the download files and the uploads
   (images stay in the registry).
 - `make backup` saves the challenge list with the database; `make restore`
-  puts it back. Uploaded images and zips are **not** in backups: keep the
-  originals, or click **Deploy all** after a restore to rebuild zips.
+  puts it back. Instances, uploaded images and zips are **not** in backups.
+  After a restore run **`make challenges`**: it recreates the instances and
+  rebuilds every zip (repo challenges from `challenges/static/`, uploaded
+  ones from their stored files). **Deploy all** in the browser does the same
+  except for repo download challenges, which it skips with a note.
 
 ## Upgrading an installation from v1.0.0
 
@@ -137,5 +140,5 @@ mkdir -p /tmp/dz && echo 'Your flag: {{FLAG}}' > /tmp/dz/readme.txt && (cd /tmp/
 | D13 | Example **Welcome** download still works for alice | zip with her flag (served from the volume now) |
 | D14 | `make challenges` | still works; dashboard challenges untouched |
 | D15 | `make backup NAME=dash` then `make new-round` | Platform page empty after the reset |
-| D16 | `make restore BACKUP=backups/*_dash` | challenge list back on the Platform page |
+| D16 | `make restore BACKUP=backups/*_dash`, then `make challenges` | challenge list back on the Platform page; instances and zips recreated |
 | D17 | Log in as **alice**, open `https://CTF_HOST/admin/platform/api/challenges` | redirected/denied, never the JSON |

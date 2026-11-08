@@ -118,6 +118,9 @@ def delete_instances(ctx: Context, cid: str, job: Job) -> int:
     return n
 
 
+NO_FILES = "has no files yet"
+
+
 def _has_files(cid: str) -> bool:
     return static_src(cid).is_dir() or static_zip_count(cid) > 0
 
@@ -142,9 +145,25 @@ def deploy(ctx: Context, job: Job, ids: Optional[list[str]] = None,
             raise RuntimeError("no challenges to deploy")
         errors = mf.validate_all(((m["id"], m) for m in everything.values()), _has_files)
         mine = [e for e in errors if e.split(":", 1)[0] in {m["id"] for m in chosen}]
+        skipped = []
+        if not ids:
+            # "Deploy all": a download challenge without files (e.g. a repo
+            # challenge after new-round: only `make challenges` can rebuild
+            # its zips) shouldn't block every other challenge.
+            no_files = {e.split(":", 1)[0] for e in mine if NO_FILES in e}
+            other = [e for e in mine if NO_FILES not in e]
+            if no_files and not other:
+                skipped = sorted(no_files)
+                chosen = [m for m in chosen if m["id"] not in no_files]
+                mine = []
+                for cid in skipped:
+                    job.log(f"! skipped {cid}: no files. Upload a .zip, or run `make challenges` "
+                            "if it comes from challenges/static/")
         if mine:
             raise RuntimeError("; ".join(mine))
-        st["detail"] = f"{len(chosen)} challenge(s)"
+        if not chosen:
+            raise RuntimeError("nothing to deploy: " + ", ".join(skipped) + " have no files")
+        st["detail"] = f"{len(chosen)} challenge(s)" + (f", skipped {', '.join(skipped)} (no files)" if skipped else "")
 
     services = [m for m in chosen if m["type"] in mf.SERVICE_TYPES]
     statics = [m for m in chosen if m["type"] == "static"]

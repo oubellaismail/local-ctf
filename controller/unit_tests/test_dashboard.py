@@ -321,6 +321,22 @@ class TestPipeline:
         assert calls == []
         assert job.steps[0]["status"] == "failed"
 
+    def test_deploy_all_skips_static_without_files(self, pipe):
+        pipeline, ctx, calls, data = pipe
+        ctx.store.put(svc())
+        ctx.store.put({"id": "welcome", "name": "Welcome", "category": "Misc", "type": "static"})
+        job = Job("t")
+        pipeline.deploy(ctx, job)  # ids=None: deploy all
+        assert ("spawn", ["web-login"]) in calls
+        assert ("ctfd", "welcome") not in calls
+        assert "skipped welcome" in job.steps[0]["detail"]
+
+    def test_single_deploy_without_files_still_fails(self, pipe):
+        pipeline, ctx, calls, data = pipe
+        ctx.store.put({"id": "welcome", "name": "Welcome", "category": "Misc", "type": "static"})
+        with pytest.raises(RuntimeError, match="no files"):
+            pipeline.deploy(ctx, Job("t"), ids=["welcome"])
+
     def test_unknown_id(self, pipe):
         pipeline, ctx, calls, data = pipe
         with pytest.raises(RuntimeError, match="unknown"):
