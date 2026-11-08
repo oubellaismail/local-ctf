@@ -32,7 +32,32 @@ EDITABLE_FIELDS = {
     "id", "name", "category", "type", "image", "port", "container_port",
     "extra_ports", "memory_limit", "run_as_root", "allow_privilege_escalation",
     "description", "author", "initial", "minimum", "decay",
+    "flag_mode", "flag", "scoring", "value",
 }
+
+# flag_mode: "per-team" (default) = each team's flag is derived from the
+#   master secret, so a shared flag is rejected and logged as cheating.
+#   "static" = one flag for everyone (the manifest's `flag`); sharing can't
+#   be detected.
+FLAG_MODES = ("per-team", "static")
+# scoring: "dynamic" (default) = initial/minimum/decay; "fixed" = `value`
+SCORINGS = ("dynamic", "fixed")
+MAX_FLAG_LEN = 200
+
+
+def flag_mode(m: dict) -> str:
+    return m.get("flag_mode") or "per-team"
+
+
+def scoring(m: dict) -> str:
+    return m.get("scoring") or "dynamic"
+
+
+def flag_for(m: dict, team_id: str, derive) -> str:
+    """The flag team `team_id` must submit for manifest m."""
+    if flag_mode(m) == "static":
+        return m["flag"]
+    return derive(team_id, m["id"])
 
 
 def default_image(challenge_id: str) -> str:
@@ -80,11 +105,31 @@ def validate_one(m: dict, has_static_source: Optional[Callable[[str], bool]] = N
             errors.append(f"memory_limit must be like 128Mi, at most {MAX_MEMORY_MI}Mi (got '{mem}')")
     if ctype == "static" and has_static_source is not None and not has_static_source(cid):
         errors.append("static challenge has no files yet (upload a .zip)")
-    for field in ("initial", "minimum", "decay"):
+    for field in ("initial", "minimum", "decay", "value"):
         if field in m and (not isinstance(m[field], int) or isinstance(m[field], bool) or m[field] < 0):
             errors.append(f"'{field}' must be a whole number ≥ 0")
     if isinstance(m.get("initial"), int) and isinstance(m.get("minimum"), int) and m["minimum"] > m["initial"]:
         errors.append("'minimum' can't be higher than 'initial'")
+    mode = flag_mode(m)
+    if mode not in FLAG_MODES:
+        errors.append(f"flag_mode must be per-team or static (got '{mode}')")
+    if mode == "static":
+        fl = m.get("flag")
+        if not isinstance(fl, str) or not fl.strip():
+            errors.append("a static flag challenge needs its 'flag'")
+        elif len(fl) > MAX_FLAG_LEN or "\n" in fl or fl != fl.strip():
+            errors.append(f"'flag' must be one line, no leading/trailing spaces, max {MAX_FLAG_LEN} characters")
+        if "flags" in m:
+            errors.append("multi-flag (bundle) challenges can't use a static flag")
+    elif m.get("flag"):
+        errors.append("'flag' is only used with flag_mode: static")
+    sc = scoring(m)
+    if sc not in SCORINGS:
+        errors.append(f"scoring must be dynamic or fixed (got '{sc}')")
+    if sc == "fixed":
+        v = m.get("value")
+        if not isinstance(v, int) or isinstance(v, bool) or v < 0:
+            errors.append("fixed scoring needs a 'value' (points, whole number ≥ 0)")
     if "flags" in m:
         for i, fl in enumerate(m["flags"] or []):
             for field in ("id", "name", "env"):

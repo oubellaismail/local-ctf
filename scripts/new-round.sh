@@ -50,6 +50,7 @@ if [[ "$MODE" == "keep-teams" ]]; then
       echo "SET @q := IF(@t > 0, 'TRUNCATE TABLE \`$t\`', 'DO 0');"
       echo "PREPARE s FROM @q; EXECUTE s; DEALLOCATE PREPARE s;"
     done
+    echo "DELETE FROM config WHERE \`key\` = 'ctf_challenge_map';"
     echo "SET FOREIGN_KEY_CHECKS=1;"
   } | mysql_exec
   kubectl -n ctfd exec redis-0 -- redis-cli FLUSHALL >/dev/null

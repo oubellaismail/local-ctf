@@ -152,6 +152,14 @@ async def save_challenge(cid: str, request: Request):
     old = ctx().store.get(cid)
     if old and old.get("type") != m.get("type"):
         errors.append("type can't change after creation; delete and re-create the challenge")
+    if old and mf.scoring(old) != mf.scoring(m):
+        try:
+            in_ctfd = old.get("name") in pipeline.ctfd().challenges()
+        except Exception:
+            in_ctfd = True  # can't check: be safe
+        if in_ctfd:
+            errors.append("points type (dynamic/fixed) can't change once deployed; "
+                          "delete and re-create the challenge")
     if errors:
         raise HTTPException(status_code=422, detail=errors)
     ctx().store.put(m)

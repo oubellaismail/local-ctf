@@ -155,6 +155,56 @@ def import_flag(ctfd_url: str, admin_token: str, challenge: dict, challenge_id_m
         raise
 
 
+def _flag_objects(ctfd_url: str, admin_token: str, challenge_id: int) -> list[dict]:
+    url = f"{ctfd_url}/api/v1/flags?per_page=100&challenge_id={challenge_id}"
+    headers = {"Authorization": f"Token {admin_token}", "Content-Type": "application/json"}
+    response = httpx.get(url, headers=headers, follow_redirects=True)
+    response.raise_for_status()
+    return response.json().get("data", [])
+
+
+def sync_flag(ctfd_url: str, admin_token: str, challenge: dict, challenge_id_map: dict) -> str:
+    """Make the CTFd flags of a single-flag challenge match its flag_mode.
+
+    per-team: exactly one "team" flag (validated by the plugin per team).
+    static:   exactly one case-sensitive "static" flag with the manifest's
+              flag; team flags are removed (and vice versa when switching).
+    Returns "created", "updated" or "skipped".
+    """
+    name = challenge.get("name", "")
+    ctfd_id = challenge_id_map.get(name)
+    if not ctfd_id:
+        logger.warning(f"Challenge not found in CTFd: {name}")
+        return "skipped"
+    headers = {"Authorization": f"Token {admin_token}", "Content-Type": "application/json"}
+    flags = _flag_objects(ctfd_url, admin_token, ctfd_id)
+
+    if (challenge.get("flag_mode") or "per-team") == "static":
+        keep = lambda f: f.get("type") == "static" and f.get("content") == challenge["flag"]
+        wanted = {"challenge_id": ctfd_id, "type": "static", "content": challenge["flag"],
+                  "data": "case_sensitive"}
+    else:
+        keep = lambda f: f.get("type") == "team" and f.get("content") == "team-derived"
+        wanted = {"challenge_id": ctfd_id, "type": "team", "content": "team-derived",
+                  "data": challenge["id"]}
+
+    removed = 0
+    for f in flags:
+        if not keep(f):
+            httpx.delete(f"{ctfd_url}/api/v1/flags/{f['id']}", headers=headers).raise_for_status()
+            removed += 1
+    if any(keep(f) for f in flags):
+        if removed:
+            logger.info(f"Updated flags: {name} (removed {removed} old)")
+            return "updated"
+        logger.info(f"Skipped (flag exists): {name}")
+        return "skipped"
+    httpx.post(f"{ctfd_url}/api/v1/flags", headers=headers, json=wanted).raise_for_status()
+    kind = "static flag" if wanted["type"] == "static" else "team flag"
+    logger.info(f"Created {kind}: {name}" + (f" (removed {removed} old)" if removed else ""))
+    return "updated" if removed else "created"
+
+
 def register_bundle_challenge(ctfd_url: str, admin_token: str, ctfd_challenge_id: int,
                                parent_id: str, components: list[dict]) -> str:
     """
@@ -240,8 +290,8 @@ def run(ctfd_url: str, admin_token: str, manifests: Optional[list] = None) -> di
     # Process single-flag challenges (unchanged behavior)
     for challenge in single_flag_entries:
         try:
-            result = import_flag(ctfd_url, admin_token, challenge, challenge_id_map)
-            if result == "created":
+            result = sync_flag(ctfd_url, admin_token, challenge, challenge_id_map)
+            if result in ("created", "updated"):
                 created += 1
             elif result == "skipped":
                 skipped += 1

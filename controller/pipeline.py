@@ -182,9 +182,13 @@ def deploy(ctx: Context, job: Job, ids: Optional[list[str]] = None,
 
     client = ctfd()
     with job.step("Add to CTFd") as st:
+        ids_in_ctfd = {}
         for m in chosen:
             action, cid = client.upsert_challenge(m, state_for_new=state_for_new)
+            ids_in_ctfd[m["id"]] = cid
             job.log(f"{action} {m['name']} (CTFd id {cid})")
+        # Tell the plugin which CTFd challenge is which manifest
+        client.update_challenge_map(add=ids_in_ctfd)
         st["detail"] = f"{len(chosen)} challenge(s)"
 
     if services:
@@ -215,8 +219,9 @@ def deploy(ctx: Context, job: Job, ids: Optional[list[str]] = None,
                 raise RuntimeError("no teams in CTFd yet: import teams first")
             static_out().mkdir(parents=True, exist_ok=True)
             for m in buildable:
-                n = static_build.build_challenge(m["id"], static_src(m["id"]), static_out(),
-                                                 teams, derive_flag, allow_build_sh=False)
+                n = static_build.build_challenge(
+                    m["id"], static_src(m["id"]), static_out(), teams,
+                    lambda team, _cid, m=m: mf.flag_for(m, team, derive_flag), allow_build_sh=False)
                 job.log(f"built {m['id']}: {n} team zips")
             st["detail"] = f"{len(buildable)} challenge(s) × {len(teams)} teams"
 
@@ -232,6 +237,7 @@ def delete(ctx: Context, job: Job, cid: str) -> None:
             if existing:
                 client.delete_challenge(existing["id"])
                 job.log(f"deleted CTFd challenge {existing['id']}")
+            client.update_challenge_map(remove=[cid])
     with job.step("Remove files and manifest"):
         for d in (static_out() / cid, static_src(cid), uploads_dir(cid)):
             if d.exists():

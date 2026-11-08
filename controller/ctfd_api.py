@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
+import json
+
 import requests
+
+# CTFd config key holding {manifest_id: ctfd_challenge_id}. The plugin reads
+# it to know which CTFd challenge is which manifest (downloads, Start
+# button, visibility). Kept in CTFd's database, so backups include it.
+CHALLENGE_MAP_KEY = "ctf_challenge_map"
 
 
 class CTFdError(RuntimeError):
@@ -50,31 +57,62 @@ class CTFd:
     def team_ids(self) -> list[str]:
         return [str(t["id"]) for t in self._paged("/api/v1/teams")]
 
+    @staticmethod
+    def _points(m: dict) -> tuple[str, dict]:
+        """(CTFd challenge type, point fields) for manifest m."""
+        if (m.get("scoring") or "dynamic") == "fixed":
+            return "standard", {"value": int(m.get("value", 100))}
+        initial = int(m.get("initial", 500))
+        return "dynamic", {"initial": initial, "minimum": int(m.get("minimum", 50)),
+                           "decay": int(m.get("decay", 15))}
+
     def upsert_challenge(self, m: dict, state_for_new: str = "hidden") -> tuple[str, int]:
         """Create or update the CTFd challenge for manifest m (matched by name).
 
         Returns ("created" | "updated", ctfd_id). New challenges start hidden
         unless state_for_new says otherwise; existing ones keep their state.
+        Description, category and points are updated on existing ones.
         """
         name = m["name"]
         desc = m.get("description") or f"Challenge: {name}"
         if m.get("author"):
             desc += f"\n\n_Author: {m['author']}_"
+        ctype, points = self._points(m)
         existing = self.challenges()
         if name in existing:
             cid = existing[name]["id"]
+            if existing[name].get("type") not in (None, ctype):
+                raise CTFdError(f"{name} is a {existing[name]['type']} challenge in CTFd; switching to "
+                                f"{'fixed' if ctype == 'standard' else 'dynamic'} points needs "
+                                "Delete and re-create")
             self._req("PATCH", f"/api/v1/challenges/{cid}",
-                      json={"description": desc, "category": m["category"]})
+                      json={"description": desc, "category": m["category"], **points})
             return "updated", cid
-        initial = int(m.get("initial", 500))
-        body = {
-            "name": name, "category": m["category"], "description": desc,
-            "type": "dynamic", "value": initial, "initial": initial,
-            "minimum": int(m.get("minimum", 50)), "decay": int(m.get("decay", 15)),
-            "state": state_for_new,
-        }
+        body = {"name": name, "category": m["category"], "description": desc,
+                "type": ctype, "state": state_for_new, **points}
+        if ctype == "dynamic":
+            body["value"] = points["initial"]
         data = self._req("POST", "/api/v1/challenges", json=body)
         return "created", data["data"]["id"]
+
+    def challenge_map(self) -> dict:
+        r = self.s.get(f"{self.url}/api/v1/configs/{CHALLENGE_MAP_KEY}", timeout=self.timeout)
+        if r.status_code == 404:
+            return {}
+        if not r.ok:
+            raise CTFdError(f"CTFd GET config: HTTP {r.status_code}")
+        try:
+            value = json.loads((r.json().get("data") or {}).get("value") or "{}")
+        except ValueError:
+            return {}
+        return value if isinstance(value, dict) else {}
+
+    def update_challenge_map(self, add: dict | None = None, remove: list | None = None) -> None:
+        current = self.challenge_map()
+        current.update({k: int(v) for k, v in (add or {}).items()})
+        for k in remove or []:
+            current.pop(k, None)
+        self._req("PATCH", "/api/v1/configs", json={CHALLENGE_MAP_KEY: json.dumps(current, sort_keys=True)})
 
     def set_state(self, ctfd_id: int, state: str) -> None:
         if state not in ("hidden", "visible"):

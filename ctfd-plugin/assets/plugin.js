@@ -835,7 +835,8 @@
     isMultiFlag = info.type === "multi_flag";
 
     // Derive manifest ID: 1) challenge-map (player-accessible), 2) name slug fallback.
-    currentChallengeId = (challengeManifestMap[String(numericId)] || "").replace(/-\d+$/, "") || null;
+    // Exact manifest id from the deploy pipeline's map (bundles included)
+    currentChallengeId = challengeManifestMap[String(numericId)] || null;
 
     if (!currentChallengeId && info.name) {
       // Normalize unicode (ï→i, é→e, etc.) before slugifying so accented
@@ -962,7 +963,8 @@
       // Challenge buttons may contain points text — extract just the name
       // CTFd format: "Challenge Name\n100" — take first line
       var firstLine = name.split("\n")[0].trim();
-      var slug = slugify(firstLine);
+      var names = challengeManifestMap._names || {};
+      var slug = names[firstLine] || slugify(firstLine);
 
       // Remove all instance status classes
       btn.classList.remove("ctf-instance-active", "ctf-instance-stopped");

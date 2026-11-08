@@ -416,3 +416,133 @@ class TestAdminAPI:
     def test_upload_needs_saved_challenge(self, admin):
         client, _, _ = admin
         assert client.post("/challenges/ghost/upload", headers=H, content=b"x").status_code == 404
+
+
+# ─── v1.2: flag modes and scoring ───────────────────────────────────────────
+
+class TestFlagModes:
+    def test_static_needs_flag(self):
+        assert any("needs its 'flag'" in e for e in mf.validate_one(svc(flag_mode="static")))
+        assert mf.validate_one(svc(flag_mode="static", flag="CTF{same}")) == []
+
+    def test_bad_static_flags(self):
+        assert any("one line" in e for e in mf.validate_one(svc(flag_mode="static", flag="a\nb")))
+        assert any("one line" in e for e in mf.validate_one(svc(flag_mode="static", flag=" x")))
+        assert any("max" in e for e in mf.validate_one(svc(flag_mode="static", flag="x" * 201)))
+        assert any("only used" in e for e in mf.validate_one(svc(flag="CTF{x}")))
+        assert any("flag_mode" in e for e in mf.validate_one(svc(flag_mode="weird")))
+
+    def test_bundle_cannot_be_static(self):
+        m = svc(flag_mode="static", flag="X", flags=[{"id": "a", "name": "A", "env": "F"}])
+        assert any("bundle" in e for e in mf.validate_one(m))
+
+    def test_flag_for(self):
+        assert mf.flag_for(svc(flag_mode="static", flag="CTF{same}"), "7", derive_flag) == "CTF{same}"
+        assert mf.flag_for(svc(), "7", derive_flag) == derive_flag("7", "web-login")
+
+    def test_scoring(self):
+        assert any("value" in e for e in mf.validate_one(svc(scoring="fixed")))
+        assert mf.validate_one(svc(scoring="fixed", value=100)) == []
+        assert any("scoring" in e for e in mf.validate_one(svc(scoring="nope")))
+
+    def test_instance_secret_uses_static_flag(self):
+        import bulk_spawn
+        data, _ = bulk_spawn._flag_env_vars("3", svc(flag_mode="static", flag="CTF{same}"))
+        assert data == {"FLAG": "CTF{same}"}
+        data, _ = bulk_spawn._flag_env_vars("3", svc())
+        assert data == {"FLAG": derive_flag("3", "web-login")}
+
+
+class FakeHttpx:
+    """Records flag API calls for import_flags.sync_flag."""
+
+    def __init__(self, flags):
+        self.flags = flags
+        self.calls = []
+
+    def _resp(self, payload=None):
+        r = MagicMock()
+        r.json.return_value = payload or {}
+        r.raise_for_status.return_value = None
+        return r
+
+    def get(self, url, **kw):
+        return self._resp({"data": self.flags})
+
+    def delete(self, url, **kw):
+        self.calls.append(("delete", url.rsplit("/", 1)[1]))
+        return self._resp()
+
+    def post(self, url, json=None, **kw):
+        self.calls.append(("post", json["type"], json["content"]))
+        return self._resp()
+
+
+class TestSyncFlag:
+    def run(self, monkeypatch, flags, manifest):
+        import import_flags
+        fake = FakeHttpx(flags)
+        monkeypatch.setattr(import_flags, "httpx", fake)
+        result = import_flags.sync_flag("http://ctfd", "tok", manifest, {manifest["name"]: 5})
+        return result, fake.calls
+
+    def test_new_team_flag(self, monkeypatch):
+        result, calls = self.run(monkeypatch, [], svc())
+        assert result == "created" and calls == [("post", "team", "team-derived")]
+
+    def test_existing_team_flag(self, monkeypatch):
+        result, calls = self.run(monkeypatch, [{"id": 1, "type": "team", "content": "team-derived"}], svc())
+        assert result == "skipped" and calls == []
+
+    def test_switch_to_static(self, monkeypatch):
+        result, calls = self.run(monkeypatch, [{"id": 1, "type": "team", "content": "team-derived"}],
+                                 svc(flag_mode="static", flag="CTF{same}"))
+        assert result == "updated"
+        assert calls == [("delete", "1"), ("post", "static", "CTF{same}")]
+
+    def test_static_flag_changed(self, monkeypatch):
+        result, calls = self.run(monkeypatch, [{"id": 2, "type": "static", "content": "CTF{old}"}],
+                                 svc(flag_mode="static", flag="CTF{new}"))
+        assert calls == [("delete", "2"), ("post", "static", "CTF{new}")]
+
+    def test_back_to_per_team(self, monkeypatch):
+        result, calls = self.run(monkeypatch, [{"id": 2, "type": "static", "content": "CTF{old}"}], svc())
+        assert calls == [("delete", "2"), ("post", "team", "team-derived")]
+
+
+class TestCTFdPoints:
+    def test_points(self):
+        from ctfd_api import CTFd
+        assert CTFd._points(svc(scoring="fixed", value=150)) == ("standard", {"value": 150})
+        assert CTFd._points(svc(initial=400, minimum=40, decay=10)) == (
+            "dynamic", {"initial": 400, "minimum": 40, "decay": 10})
+
+    def test_create_fixed_and_refuse_type_switch(self):
+        from ctfd_api import CTFd, CTFdError
+        c = CTFd("http://ctfd", "tok")
+        sent = []
+        c._req = lambda method, path, **kw: sent.append((method, path, kw.get("json"))) or {"data": {"id": 9}}
+        c.challenges = lambda: {}
+        assert c.upsert_challenge(svc(scoring="fixed", value=150)) == ("created", 9)
+        body = sent[0][2]
+        assert body["type"] == "standard" and body["value"] == 150 and "initial" not in body
+        c.challenges = lambda: {"Login": {"id": 9, "type": "standard"}}
+        assert c.upsert_challenge(svc(scoring="fixed", value=200))[0] == "updated"
+        assert sent[-1][2]["value"] == 200
+        with pytest.raises(CTFdError, match="Delete and re-create"):
+            c.upsert_challenge(svc())  # dynamic, but CTFd has it as standard
+
+
+class TestPipelineV12:
+    def test_static_flag_zips_and_map(self, pipe):
+        pipeline, ctx, calls, data = pipe
+        ctx.store.put({"id": "welcome", "name": "Welcome", "category": "Misc", "type": "static",
+                       "flag_mode": "static", "flag": "CTF{same}"})
+        src = pipeline.static_src("welcome")
+        src.mkdir(parents=True)
+        (src / "r.txt").write_text("flag: {{FLAG}}")
+        pipeline.deploy(ctx, Job("t"))
+        for team in ("1", "2"):
+            with zipfile.ZipFile(pipeline.static_out() / "welcome" / f"{team}.zip") as z:
+                assert z.read("r.txt").decode() == "flag: CTF{same}"
+        pipeline.ctfd().update_challenge_map.assert_called_with(add={"welcome": 1})

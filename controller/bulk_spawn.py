@@ -50,6 +50,7 @@ from k8s_client import init_k8s_client
 from flag import derive_flag
 from manifest_loader import load_manifests
 from naming import deployment_name, secret_name, service_name, managed_labels
+from manifests import flag_for
 
 
 def _flag_env_vars(team_id: str, challenge: dict) -> tuple[dict, list]:
@@ -76,7 +77,8 @@ def _flag_env_vars(team_id: str, challenge: dict) -> tuple[dict, list]:
             for entry in challenge["flags"]
         ]
     else:
-        secret_data = {"FLAG": derive_flag(team_id, challenge["id"])}
+        # per-team (derived) or the challenge's static flag
+        secret_data = {"FLAG": flag_for(challenge, team_id, derive_flag)}
         env_vars = [
             V1EnvVar(
                 name="FLAG",
@@ -162,10 +164,18 @@ def create_secret(core_v1: Any, team_id: str, challenge: dict) -> str:
         logger.info(f"Created secret: {sec_name}")
         return "created"
     except ApiException as e:
-        if e.status == 409:
-            logger.debug(f"Skipped (exists): {sec_name}")
-            return "skipped"
-        raise
+        if e.status != 409:
+            raise
+    # Exists: keep it in sync (e.g. a static flag was changed). Instances
+    # pick the new value up the next time they start.
+    current = core_v1.read_namespaced_secret(sec_name, "challenges")
+    wanted = {k: base64.b64encode(v.encode()).decode() for k, v in secret_data.items()}
+    if (current.data or {}) != wanted:
+        core_v1.patch_namespaced_secret(sec_name, "challenges", {"data": wanted})
+        logger.info(f"Updated secret: {sec_name}")
+        return "updated"
+    logger.debug(f"Skipped (exists): {sec_name}")
+    return "skipped"
 
 
 def create_deployment(apps_v1: Any, team_id: str, challenge: dict) -> str:

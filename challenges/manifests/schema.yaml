@@ -20,6 +20,13 @@
 # allow_privilege_escalation: true  # optional: for setuid-binary challenges
 # description: "..."         # optional, markdown
 # author: someone            # optional, appended to the description
+# flag_mode: per-team        # optional: per-team (default) = each team's flag is
+#                            #   derived, sharing is detected and logged;
+#                            #   static = one flag for everyone (set `flag`)
+# flag: "CTF{same_for_all}"  # only with flag_mode: static. Repo manifests are
+#                            #   public: prefer the dashboard for static flags
+# scoring: dynamic           # optional: dynamic (default) or fixed
+# value: 100                 # points when scoring: fixed
 # initial: 500               # optional dynamic scoring start   (default 500)
 # minimum: 50                # optional dynamic scoring floor   (default 50)
 # decay: 15                  # optional solves to reach minimum (default 15)

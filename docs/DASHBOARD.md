@@ -47,6 +47,29 @@ compiled in still use `build.sh` with `make challenges` (see the README).
 page starts instances as **team 1**. Start it, solve it, then **Stop** it so
 team 1's instance isn't left running.
 
+## Flags and points
+
+**Flag** (per challenge):
+- **Different for each team** (default, recommended). Containers get their
+  team's flag in `FLAG`, download files in place of `{{FLAG}}`. A flag copied
+  from another team is rejected and logged under **Security**.
+- **Same flag for everyone**: you type the flag. Good for warm-ups or
+  challenges whose flag is baked in. Copying between teams can't be detected.
+  Changing the flag later and redeploying updates CTFd, the zips, and each
+  instance the next time it starts.
+
+**Points**: **Dynamic** (start / minimum / solves to minimum) or **Fixed**.
+Changing the numbers and redeploying updates CTFd. Switching between dynamic
+and fixed after deploying needs Delete and re-create (CTFd can't convert a
+challenge's type).
+
+## Security
+
+**Admin → Security** (or the alert on the Platform page):
+- **Flag sharing**: every submission of another team's flag: who, whose
+  flag, which challenge, when.
+- **Account sharing**: accounts used from 3 or more different addresses.
+
 ## Changing or removing
 
 | Action | Effect |
@@ -54,12 +77,11 @@ team 1's instance isn't left running.
 | **Edit / upload** → Save | Name, description, category: updated in CTFd on the next Deploy |
 | Upload a new image → **Deploy** → *recreate instances: OK* | New image for every team. Running instances stop; teams press Start again |
 | Change port or memory → **Deploy** → *recreate: OK* | Same: needed so instances get the new settings |
+| Change the static flag → **Deploy** | CTFd and zips update; instances use the new flag after their next Start (or *recreate: OK* now) |
+| Change points → **Deploy** | Updated in CTFd |
 | **Hide / Show** | CTFd visibility, immediately |
 | **Delete** (type the ID) | Removes team instances, the CTFd challenge **with its solves**, and uploaded files |
 | **Deploy all** | Creates whatever is missing (e.g. instances and zips for a team added mid-round) |
-
-Points for an existing CTFd challenge are set in CTFd itself
-(Admin → Challenges), not by re-deploying.
 
 ## Dashboard and `make challenges` together
 
@@ -142,3 +164,23 @@ mkdir -p /tmp/dz && echo 'Your flag: {{FLAG}}' > /tmp/dz/readme.txt && (cd /tmp/
 | D15 | `make backup NAME=dash` then `make new-round` | Platform page empty after the reset |
 | D16 | `make restore BACKUP=backups/*_dash`, then `make challenges` | challenge list back on the Platform page; instances and zips recreated |
 | D17 | Log in as **alice**, open `https://CTF_HOST/admin/platform/api/challenges` | redirected/denied, never the JSON |
+
+---
+
+## VM test checklist (v1.2, part 1: security, flags, points)
+
+On the VM: `cd ~/local-ctf && git fetch && git checkout v1.2-dev && make build-ctfd && make build-controller`.
+
+| # | Do | Expect |
+|---|---|---|
+| S1 | Admin top bar | **Security** next to Platform; it opens the flag-sharing log in CTFd's normal admin style, with an **Account sharing** tab |
+| S2 | Platform page | yellow alert "⚠ 2 flag-sharing incidents (latest: …)" with **Review** |
+| S3 | Security → Account sharing | your Mac and phone addresses listed for alice/bob (no longer empty) |
+| S4 | **New challenge** "Static Web": Web service, port 8080, **Flag: Same flag for everyone** `TEST{same_for_all}`, **Points: Fixed** 150 → Save → upload `dash-web.tar` → Deploy → Show | steps ✔; table shows **150**, badges **fixed** and **same flag** |
+| S5 | alice: Start "Static Web", solve | the page shows `TEST{same_for_all}`; Correct, **150 points** |
+| S6 | bob: submit `TEST{same_for_all}` on Static Web | **Correct** (same flag for everyone), nothing new under Security |
+| S7 | Edit "Static Web": flag `TEST{changed}`, points 200 → Save → Deploy → *recreate: OK* | CTFd shows 200; carl's instance (Team C) now prints `TEST{changed}`; the old flag is Incorrect |
+| S8 | Edit "Static Web": Points → Dynamic → Save | refused: "points type can't change once deployed…" |
+| S9 | **New challenge** "Login Bypass Two", **ID changed to** `web-two` → upload, Deploy, Show | alice can Start it (the name isn't the ID: the map handles it) |
+| S10 | **New challenge** "Static Files": Download, same flag `TEST{files}` → upload `dash-files.zip` → Deploy → Show | every team's zip says `TEST{files}`; Correct |
+| S11 | Hide "Static Web"; as alice open `https://CTF_HOST/challenges` | gone; starting it via an old browser tab gives "challenge not available" |

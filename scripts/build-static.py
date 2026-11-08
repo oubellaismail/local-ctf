@@ -30,6 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "controller"))
 from flag import derive_flag  # noqa: E402  (same formula the CTFd plugin checks)
 import static_build  # noqa: E402
+import manifests as mf  # noqa: E402
 
 MANIFESTS = ROOT / "challenges" / "manifests"
 SRC = ROOT / "challenges" / "static"
@@ -65,7 +66,7 @@ def main() -> int:
             continue
         m = yaml.safe_load(f.read_text()) or {}
         if m.get("type") == "static":
-            statics.append(m["id"])
+            statics.append(m)
 
     if OUT.exists():
         shutil.rmtree(OUT)
@@ -78,9 +79,12 @@ def main() -> int:
     if not teams:
         sys.exit("  ✘ no teams in CTFd yet — import teams first")
 
-    for cid in statics:
+    for m in statics:
+        cid = m["id"]
         try:
-            n = static_build.build_challenge(cid, SRC / cid, OUT, teams, derive_flag, allow_build_sh=True)
+            n = static_build.build_challenge(cid, SRC / cid, OUT, teams,
+                                             lambda team, _cid, m=m: mf.flag_for(m, team, derive_flag),
+                                             allow_build_sh=True)
         except static_build.StaticBuildError as e:
             sys.exit(f"  ✘ {e}")
         print(f"  built {cid}: {n} team zips")

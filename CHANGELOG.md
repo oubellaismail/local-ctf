@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased (v1.2, branch v1.2-dev)
+
+### Added
+- **Admin → Security**: flag-sharing log and account sharing inside CTFd's
+  admin panel (menu entry), and an alert on the Platform page
+- Per challenge: **same flag for everyone** (`flag_mode: static`) as an
+  alternative to per-team flags, and **fixed points** (`scoring: fixed`)
+- The deploy pipeline records which CTFd challenge belongs to which manifest
+  (`ctf_challenge_map` in CTFd's config); the plugin uses it instead of
+  guessing from the challenge name
+
+### Changed
+- Editing points in the dashboard and redeploying updates them in CTFd
+- Players can only start instances of visible challenges
+- Instance flag secrets are updated on deploy when the flag changes
+
+### Fixed
+- Account sharing ignored every private address, so it was always empty on
+  a campus LAN; now only the platform's own addresses are left out
+  (threshold: 3 addresses)
+- Downloads and the Start button failed for challenges whose ID isn't the
+  slug of their name (e.g. ID `web-login`, name "Login Bypass")
+- IDs ending in `-<number>` (e.g. `crypto-2`) were cut short on the
+  challenge page
+
 ## v1.1.0 (2026-11-08)
 
 Admin dashboard: add challenges from the browser. Tested on the dry-run VM

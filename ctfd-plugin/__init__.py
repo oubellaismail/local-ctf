@@ -71,8 +71,24 @@ def _get_status_code(resp):
     return getattr(resp, "status_code", 200)
 
 
+def _manifest_map():
+    """{manifest_id: ctfd_challenge_id}, written by the deploy pipeline into
+    CTFd's config (key ctf_challenge_map). Empty if nothing deployed yet."""
+    try:
+        from CTFd.models import Configs
+        row = Configs.query.filter_by(key="ctf_challenge_map").first()
+        value = json.loads(row.value) if row and row.value else {}
+        return {str(k): int(v) for k, v in value.items()} if isinstance(value, dict) else {}
+    except Exception:
+        return {}
+
+
 def _challenge_is_visible(challenge_manifest_id):
-    """Return True if the manifest slug maps to a visible CTFd challenge."""
+    """Return True if the manifest id maps to a visible CTFd challenge."""
+    mapped = _manifest_map().get(challenge_manifest_id)
+    if mapped is not None:
+        return _challenge_id_is_visible(mapped)
+    # Older deployments without the map: fall back to the name's slug
     try:
         from CTFd.models import Challenges
         challenge = Challenges.query.all()
@@ -634,12 +650,23 @@ def load(app):
         if not _check_authed():
             return jsonify({"error": "unauthorized"}), 401
         try:
-            from CTFd.models import Flags
+            from CTFd.models import Flags, Challenges
             flags = Flags.query.filter_by(type="team").all()
             mapping = {}
             for f in flags:
                 if f.data:
                     mapping[str(f.challenge_id)] = f.data
+            # The pipeline's map covers every challenge, including ones with
+            # one static flag for everyone (they have no team flag)
+            for manifest_id, ctfd_id in _manifest_map().items():
+                mapping[str(ctfd_id)] = manifest_id
+            # Challenge name → manifest id, for the board's running/stopped
+            # indicators (the board only knows names). Visible ones only.
+            names = {}
+            for ch in Challenges.query.filter_by(state="visible").all():
+                if str(ch.id) in mapping:
+                    names[ch.name] = mapping[str(ch.id)]
+            mapping["_names"] = names
             resp = make_response(jsonify(mapping))
             resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
             return resp
@@ -727,6 +754,10 @@ def load(app):
             if not current_team_id:
                 _log_audit("activate", user_id, None, data.get("challenge_id"), remote_ip, "denied", 403)
                 return jsonify({"error": "no team"}), 403
+            if not _challenge_is_visible(str(data.get("challenge_id") or "")):
+                _log_audit("activate", user_id, current_team_id, data.get("challenge_id"),
+                           remote_ip, "denied", 404)
+                return jsonify({"error": "challenge not available"}), 404
             data["team_id"] = current_team_id
         else:
             current_team_id = data.get("team_id")
@@ -1064,217 +1095,13 @@ def load(app):
             db.session.rollback()
             return jsonify({"error": str(e)}), 500
 
-    # ── Cheaters admin endpoint ───────────────────────────────────────────────
-
-    def _admin_page(title, nav_links, content_html):
-        """Wrap content in a minimal CTFd-styled admin HTML page."""
-        nav_html = "".join(
-            '<a href="%s" style="color:var(--bs-primary);text-decoration:none;'
-            'margin-right:1.5rem;font-size:.9rem;font-weight:500;">%s</a>' % (h, l)
-            for l, h in nav_links
-        )
-        return """<!doctype html>
-<html data-bs-theme="dark">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>%s — InfoDays CTF</title>
-  <link rel="stylesheet" href="/themes/core/static/assets/main.e9ec7884.css">
-  <link rel="stylesheet" href="/plugins/controller-plugin/assets/style.css">
-  <style>
-    body { padding: 2rem; }
-    .ctf-admin-nav { margin-bottom: 2rem; padding-bottom: 1rem;
-                     border-bottom: 1px solid var(--bs-border-color); }
-    table { width: 100%%; border-collapse: collapse; font-size: .875rem; }
-    th { text-align: left; padding: .6rem .8rem; border-bottom: 2px solid var(--bs-border-color);
-         color: var(--bs-secondary-color); font-weight: 600; text-transform: uppercase;
-         font-size: .75rem; letter-spacing: .05em; }
-    td { padding: .55rem .8rem; border-bottom: 1px solid var(--bs-border-color);
-         vertical-align: top; }
-    tr:hover td { background: rgba(255,255,255,.03); }
-    .badge-sus  { background: rgba(255,80,80,.15); color:#ff6b6b;
-                  border: 1px solid rgba(255,80,80,.3); border-radius:4px;
-                  padding:2px 7px; font-size:.75rem; font-weight:600; }
-    .badge-ok   { background: rgba(0,196,255,.1); color:#00c4ff;
-                  border: 1px solid rgba(0,196,255,.2); border-radius:4px;
-                  padding:2px 7px; font-size:.75rem; }
-    .ip-list    { font-family: 'JetBrains Mono', monospace; font-size:.8rem;
-                  color: var(--bs-secondary-color); word-break: break-all; }
-    .page-title { font-size:1.6rem; font-weight:700; margin-bottom:.3rem; }
-    .page-sub   { color: var(--bs-secondary-color); font-size:.9rem; margin-bottom:1.5rem; }
-    .stat-pill  { display:inline-block; background:rgba(0,196,255,.08);
-                  border:1px solid rgba(0,196,255,.2); border-radius:6px;
-                  padding:.3rem .8rem; font-size:.8rem; margin-right:.5rem; }
-  </style>
-</head>
-<body>
-  <div class="ctf-admin-nav">
-    <a href="/admin" style="color:var(--bs-secondary-color);text-decoration:none;
-       margin-right:1.5rem;font-size:.9rem;">← Admin</a>
-    %s
-  </div>
-  %s
-</body>
-</html>""" % (title, nav_html, content_html)
-
-    @blueprint.route("/admin/account-sharing")
-    def admin_account_sharing():
-        if not _check_admin():
-            return jsonify({"error": "admin only"}), 403
-        try:
-            from CTFd.models import db
-            from sqlalchemy import text
-            rows = db.session.execute(
-                text("""
-                    SELECT
-                        u.id          AS user_id,
-                        u.name        AS user,
-                        t.id          AS team_id,
-                        t.name        AS team,
-                        COUNT(DISTINCT tr.ip)                        AS distinct_ips,
-                        COUNT(*)                                     AS total_events,
-                        GROUP_CONCAT(DISTINCT tr.ip
-                            ORDER BY tr.ip SEPARATOR ', ')           AS ip_list,
-                        MIN(tr.date)                                 AS first_seen,
-                        MAX(tr.date)                                 AS last_seen
-                    FROM tracking tr
-                    JOIN users  u ON u.id = tr.user_id
-                    LEFT JOIN teams t ON t.id = u.team_id
-                    WHERE tr.ip NOT LIKE '10.%%'
-                      AND tr.ip NOT LIKE '172.%%'
-                      AND tr.ip NOT LIKE '192.168.%%'
-                    GROUP BY u.id
-                    ORDER BY distinct_ips DESC, total_events DESC
-                """)
-            ).fetchall()
-
-            sus_count = sum(1 for r in rows if r.distinct_ips >= 4)
-            rows_html = ""
-            for r in rows:
-                badge = '<span class="badge-sus">SUSPICIOUS</span>' if r.distinct_ips >= 4 \
-                        else '<span class="badge-ok">OK</span>'
-                team_link = '<a href="/admin/teams/%d" style="color:var(--bs-primary)">%s</a>' % (
-                    r.team_id, _escape_html(r.team or "(no team)")
-                ) if r.team_id else "(no team)"
-                user_link = '<a href="/admin/users/%d" style="color:var(--bs-primary)">%s</a>' % (
-                    r.user_id, _escape_html(r.user)
-                )
-                rows_html += (
-                    "<tr><td>%s</td><td>%s</td><td>%s</td>"
-                    "<td style='text-align:center'><strong>%d</strong></td>"
-                    "<td style='text-align:center'>%d</td>"
-                    "<td class='ip-list'>%s</td>"
-                    "<td style='color:var(--bs-secondary-color);font-size:.8rem'>%s</td></tr>"
-                ) % (badge, user_link, team_link, r.distinct_ips, r.total_events,
-                     _escape_html(r.ip_list or ""), _escape_html(str(r.last_seen)[:16]))
-
-            stats = (
-                '<span class="stat-pill">%d users tracked</span>'
-                '<span class="stat-pill" style="color:#ff6b6b">%d suspicious</span>'
-                '<span class="stat-pill" style="color:var(--bs-secondary-color);font-size:.75rem">'
-                'Threshold: 4+ distinct IPs = suspicious</span>'
-            ) % (len(rows), sus_count)
-
-            content = """
-<div class="page-title">Account Sharing Detection</div>
-<div class="page-sub">Players logged in from 4+ distinct public IPs are flagged as suspicious.</div>
-<div style="margin-bottom:1.5rem">%s</div>
-<table>
-  <thead><tr>
-    <th>Status</th><th>User</th><th>Team</th>
-    <th style="text-align:center">Distinct IPs</th>
-    <th style="text-align:center">Events</th>
-    <th>IP Addresses</th><th>Last Seen</th>
-  </tr></thead>
-  <tbody>%s</tbody>
-</table>""" % (stats, rows_html if rows_html else
-               "<tr><td colspan='7' style='text-align:center;padding:2rem;"
-               "color:var(--bs-secondary-color)'>No tracking data yet</td></tr>")
-
-            nav = [("Cheaters", "/admin/cheaters"), ("Account Sharing", "/admin/account-sharing")]
-            resp = make_response(_admin_page("Account Sharing", nav, content))
-            resp.headers["Content-Type"] = "text/html"
-            return resp
-        except Exception as e:
-            return "<pre>Error: %s</pre>" % _escape_html(e), 500
-
-    @blueprint.route("/admin/cheaters")
-    def admin_cheaters():
-        if not _check_admin():
-            return jsonify({"error": "admin only"}), 403
-        try:
-            from CTFd.models import db
-            from sqlalchemy import text
-            rows = db.session.execute(
-                text("""
-                    SELECT
-                        c.id,
-                        st.name  AS submitting_team,
-                        c.submitting_team_id,
-                        su.name  AS submitting_user,
-                        c.submitting_user_id,
-                        c.submitted_flag,
-                        ot.name  AS owner_team,
-                        c.owner_team_id,
-                        c.challenge_manifest_id,
-                        c.submitted_at
-                    FROM cheaters c
-                    LEFT JOIN teams st ON st.id = c.submitting_team_id
-                    LEFT JOIN users su ON su.id = c.submitting_user_id
-                    LEFT JOIN teams ot ON ot.id = c.owner_team_id
-                    ORDER BY c.submitted_at DESC
-                """)
-            ).fetchall()
-
-            rows_html = ""
-            for r in rows:
-                sub_team = '<a href="/admin/teams/%d" style="color:var(--bs-primary)">%s</a>' % (
-                    r.submitting_team_id, _escape_html(r.submitting_team or "?")
-                ) if r.submitting_team_id else "?"
-                sub_user = '<a href="/admin/users/%d" style="color:var(--bs-primary)">%s</a>' % (
-                    r.submitting_user_id, _escape_html(r.submitting_user or "?")
-                ) if r.submitting_user_id else "?"
-                own_team = '<a href="/admin/teams/%d" style="color:#ff6b6b">%s</a>' % (
-                    r.owner_team_id, _escape_html(r.owner_team or "?")
-                ) if r.owner_team_id else "?"
-                rows_html += (
-                    "<tr><td>%s</td><td>%s</td><td>%s</td>"
-                    "<td style='font-family:monospace;font-size:.8rem'>%s</td>"
-                    "<td>%s</td>"
-                    "<td style='color:var(--bs-secondary-color);font-size:.8rem'>%s</td></tr>"
-                ) % (sub_team, sub_user, own_team,
-                     _escape_html((r.submitted_flag or "")[:60]),
-                     _escape_html(r.challenge_manifest_id),
-                     _escape_html(str(r.submitted_at)[:16]))
-
-            content = """
-<div class="page-title">Flag Cheating Log</div>
-<div class="page-sub">Players who submitted another team's flag. Each row is one cross-team attempt.</div>
-<div style="margin-bottom:1.5rem">
-  <span class="stat-pill" style="color:#ff6b6b">%d incidents</span>
-</div>
-<table>
-  <thead><tr>
-    <th>Submitting Team</th><th>Player</th><th>Flag Owner</th>
-    <th>Submitted Flag</th><th>Challenge</th><th>Time</th>
-  </tr></thead>
-  <tbody>%s</tbody>
-</table>""" % (len(rows), rows_html if rows_html else
-               "<tr><td colspan='6' style='text-align:center;padding:2rem;"
-               "color:var(--bs-secondary-color)'>No cheating incidents recorded</td></tr>")
-
-            nav = [("Cheaters", "/admin/cheaters"), ("Account Sharing", "/admin/account-sharing")]
-            resp = make_response(_admin_page("Cheaters", nav, content))
-            resp.headers["Content-Type"] = "text/html"
-            return resp
-        except Exception as e:
-            return "<pre>Error: %s</pre>" % _escape_html(e), 500
-
     app.register_blueprint(blueprint)
 
-    # ── Admin → Platform (dashboard) ─────────────────────────────────────────
+    # ── Admin → Platform (dashboard) and Security (cheaters, account sharing)
     from .platform_admin import register_platform_admin
+    from .security_admin import register_security_admin
     register_platform_admin(app)
+    register_security_admin(app)
 
     # ── Register custom flag + challenge types ────────────────────────────────
     from CTFd.plugins.flags import FLAG_CLASSES

@@ -97,6 +97,7 @@ PAGE = r"""
   </div>
 </div>
 <div class="container" id="pf" data-nonce="{{ nonce }}" data-configured="{{ 1 if configured else 0 }}">
+  <div id="pf-security"></div>
   <div id="pf-alert"></div>
 
   <div style="gap:.5rem" class="d-flex gap-2 mb-3">
@@ -147,16 +148,49 @@ PAGE = r"""
             <input class="form-control" name="image" readonly placeholder="set automatically: ctf-registry:5000/challenges/&lt;id&gt;:latest">
           </div>
           <div class="col-md-4">
-            <label class="form-label">Points (start)</label>
-            <input class="form-control" name="initial" type="number" min="0" value="500">
+            <label class="form-label">Flag</label>
+            <select class="form-control form-select" name="flag_mode">
+              <option value="per-team">Different for each team (recommended)</option>
+              <option value="static">Same flag for everyone</option>
+            </select>
+          </div>
+          <div class="col-md-8 pf-static-flag d-none">
+            <label class="form-label">The flag</label>
+            <input class="form-control" name="flag" maxlength="200" placeholder="e.g. CTF{welcome_to_the_ctf}" autocomplete="off">
+            <small class="text-warning">Everyone submits this same flag, so a team that copies it from
+              another team can't be detected.</small>
+          </div>
+          <div class="col-md-8 pf-team-flag">
+            <small class="text-muted d-block mt-4">Each team gets its own flag (in <code>FLAG</code> /
+              <code>{{ '{{FLAG}}' }}</code>). A flag copied from another team is rejected and shows up
+              under Security.</small>
           </div>
           <div class="col-md-4">
-            <label class="form-label">Points (minimum)</label>
-            <input class="form-control" name="minimum" type="number" min="0" value="50">
+            <label class="form-label">Points</label>
+            <select class="form-control form-select" name="scoring">
+              <option value="dynamic">Dynamic (drop as more teams solve)</option>
+              <option value="fixed">Fixed</option>
+            </select>
           </div>
-          <div class="col-md-4">
-            <label class="form-label">Solves to reach minimum</label>
-            <input class="form-control" name="decay" type="number" min="0" value="15">
+          <div class="col-md-4 pf-fixed d-none">
+            <label class="form-label">Points</label>
+            <input class="form-control" name="value" type="number" min="0" value="100">
+          </div>
+          <div class="col-md-8 pf-dynamic">
+            <div class="row g-2">
+              <div class="col-4">
+                <label class="form-label">Start</label>
+                <input class="form-control" name="initial" type="number" min="0" value="500">
+              </div>
+              <div class="col-4">
+                <label class="form-label">Minimum</label>
+                <input class="form-control" name="minimum" type="number" min="0" value="50">
+              </div>
+              <div class="col-4">
+                <label class="form-label">Solves to minimum</label>
+                <input class="form-control" name="decay" type="number" min="0" value="15">
+              </div>
+            </div>
           </div>
           <div class="col-12">
             <label class="form-label">Description <small class="text-muted">(Markdown)</small></label>
@@ -304,7 +338,9 @@ PAGE = r"""
         el("td", {}, el("strong", {}, m.name), el("div", {class: "small text-muted"}, m.id)),
         el("td", {}, m.category),
         el("td", {}, svc ? (m.type === "http" ? "web" : "tcp") + " :" + m.port : "download"),
-        el("td", {}, r.ctfd && r.ctfd.value != null ? r.ctfd.value : (m.initial || 500)),
+        el("td", {}, r.ctfd && r.ctfd.value != null ? r.ctfd.value : (m.scoring === "fixed" ? m.value : (m.initial || 500)),
+          m.scoring === "fixed" ? el("div", {}, badge("fixed", "secondary")) : null,
+          m.flag_mode === "static" ? el("div", {}, badge("same flag", "warning")) : null),
         el("td", {}, ctfd),
         el("td", {}, inst),
         el("td", {class: "text-end"}, acts)));
@@ -321,6 +357,13 @@ PAGE = r"""
     const svc = F("type").value !== "static";
     document.querySelectorAll(".pf-service").forEach(e => e.classList.toggle("d-none", !svc));
     F("port").required = svc;
+    const stat = F("flag_mode").value === "static";
+    document.querySelectorAll(".pf-static-flag").forEach(e => e.classList.toggle("d-none", !stat));
+    document.querySelectorAll(".pf-team-flag").forEach(e => e.classList.toggle("d-none", stat));
+    F("flag").required = stat;
+    const fixed = F("scoring").value === "fixed";
+    document.querySelectorAll(".pf-fixed").forEach(e => e.classList.toggle("d-none", !fixed));
+    document.querySelectorAll(".pf-dynamic").forEach(e => e.classList.toggle("d-none", fixed));
   }
 
   function openEditor(id) {
@@ -332,7 +375,7 @@ PAGE = r"""
     F("type").disabled = !!id;
     if (r) {
       const m = r.manifest;
-      for (const k of ["name", "id", "category", "type", "port", "memory_limit", "image", "initial", "minimum", "decay", "description", "author"]) {
+      for (const k of ["name", "id", "category", "type", "port", "memory_limit", "image", "initial", "minimum", "decay", "value", "flag_mode", "flag", "scoring", "description", "author"]) {
         if (m[k] != null && F(k)) F(k).value = m[k];
       }
     }
@@ -352,7 +395,9 @@ PAGE = r"""
     file.value = "";
     if (m.type === "static") {
       $("pf-upload-what").textContent = "files (.zip)";
-      $("pf-upload-help").textContent = "A zip of the files players download. Put {{FLAG}} where each team's flag goes; every team gets its own copy. Max 50 MB.";
+      $("pf-upload-help").textContent = m.flag_mode === "static"
+        ? "A zip of the files players download. Put {{FLAG}} where the flag goes (everyone gets the same flag). Max 50 MB."
+        : "A zip of the files players download. Put {{FLAG}} where each team's flag goes; every team gets its own copy. Max 50 MB.";
       file.accept = ".zip";
     } else {
       $("pf-upload-what").textContent = "image (.tar)";
@@ -362,6 +407,8 @@ PAGE = r"""
   }
 
   F("type").addEventListener("change", syncTypeFields);
+  F("flag_mode").addEventListener("change", syncTypeFields);
+  F("scoring").addEventListener("change", syncTypeFields);
   F("name").addEventListener("input", () => { if (!editing) F("id").value = slug(F("name").value); });
   $("pf-new").onclick = () => openEditor(null);
   $("pf-cancel").onclick = () => { $("pf-editor").classList.add("d-none"); editing = null; };
@@ -371,7 +418,11 @@ PAGE = r"""
     ev.preventDefault();
     const body = {};
     for (const k of ["name", "category", "type", "description", "author"]) body[k] = F(k).value.trim();
-    for (const k of ["initial", "minimum", "decay"]) if (F(k).value !== "") body[k] = parseInt(F(k).value, 10);
+    body.flag_mode = F("flag_mode").value;
+    if (body.flag_mode === "static") body.flag = F("flag").value.trim();
+    body.scoring = F("scoring").value;
+    const pointFields = body.scoring === "fixed" ? ["value"] : ["initial", "minimum", "decay"];
+    for (const k of pointFields) if (F(k).value !== "") body[k] = parseInt(F(k).value, 10);
     if (body.type !== "static") {
       body.port = parseInt(F("port").value, 10);
       body.memory_limit = F("memory_limit").value;
@@ -493,10 +544,33 @@ PAGE = r"""
     pollTimer = setInterval(tick, 1500);
   }
 
+  async function securityAlert() {
+    let s;
+    try {
+      const r = await fetch("/admin/platform/security-summary", {credentials: "same-origin"});
+      s = await r.json();
+    } catch (e) { return; }
+    const box = $("pf-security");
+    box.replaceChildren();
+    if (!s.cheaters && !s.shared_accounts) return;
+    const parts = [];
+    if (s.cheaters) {
+      let t = "⚠ " + s.cheaters + " flag-sharing incident" + (s.cheaters === 1 ? "" : "s");
+      if (s.last) t += " (latest: " + (s.last.team || "?") + " / " + (s.last.user || "?") + " used " + (s.last.owner || "?") + "'s flag on " + s.last.challenge + ", " + s.last.at + ")";
+      parts.push(t);
+    }
+    if (s.shared_accounts) parts.push("⚠ " + s.shared_accounts + " account" + (s.shared_accounts === 1 ? "" : "s") + " used from several addresses");
+    box.append(el("div", {class: "alert alert-warning d-flex justify-content-between align-items-center"},
+      el("span", {}, parts.join(" · ")),
+      el("a", {class: "btn btn-sm btn-warning", href: "/admin/cheaters"}, "Review")));
+  }
+
   if (root.dataset.configured !== "1") {
     alertBox("The dashboard isn't connected: CONTROLLER_ADMIN_KEY is missing in CTFd. Run make secrets && make deploy.");
   }
   load();
+  securityAlert();
+  setInterval(securityAlert, 60000);
 })();
 {% endraw %}
 </script>
